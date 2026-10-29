@@ -31,7 +31,7 @@ PR을 IntelliJ, 웹, CLI 중 어디서 만들었는지와 관계없이 GitHub에
 GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
 ```bash
-npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.1.1
+npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.2.0
 pr-ai-reviewer init
 ```
 
@@ -84,7 +84,21 @@ pr-ai-reviewer status                     # 대기·리뷰 기록
 
 로그는 stderr, 리뷰 본문은 stdout으로 나갑니다. dry-run 결과도 `stateDir/reviews/`에 파일로 남습니다.
 
-## 6. 안전 설계
+## 6. 로그인 시 자동 실행 (macOS)
+
+```bash
+pr-ai-reviewer service install --post   # 게시 모드로 등록 (--dry-run이면 게시하지 않음)
+pr-ai-reviewer service status           # 상태와 최근 로그
+pr-ai-reviewer service uninstall        # 해제
+```
+
+- 사용자 계정의 `~/Library/LaunchAgents/com.github.juhee200.pr-ai-reviewer.plist`로 등록되어 관리자 권한이 필요 없습니다.
+- launchd는 셸의 PATH를 물려받지 않습니다. 그래서 등록할 때 node, gh, git, claude, codex의 경로를 찾아 plist에 넣습니다. 도구를 새로 설치하거나 옮겼다면 다시 등록하세요.
+- 로그는 `~/Library/Logs/pr-ai-reviewer/agent.log`에 남습니다.
+- 비정상 종료하면 다시 시작하고, 로그아웃이나 해제로 정상 종료하면 다시 시작하지 않습니다.
+- 처음 켜면 이미 열려 있는 내 PR 중 아직 리뷰하지 않은 커밋도 찾아 리뷰합니다. dry-run으로만 리뷰한 커밋은 게시 모드에서 다시 리뷰해 게시합니다.
+
+## 7. 안전 설계
 
 - 외부 명령은 셸을 거치지 않고 인자 배열로 실행합니다. 저장소 이름, PR 번호, 커밋 SHA, 브랜치 이름은 형식을 검증한 뒤 씁니다.
 - AI는 읽기 전용입니다.
@@ -96,7 +110,7 @@ pr-ai-reviewer status                     # 대기·리뷰 기록
 - 토큰은 직접 다루지 않고 gh·git의 기존 인증을 씁니다. 로그에 환경변수를 남기지 않습니다.
 - 리뷰는 PR 작성자 PC의 AI 서비스로 코드를 보냅니다. 평소 그 CLI로 회사 코드를 다루는 범위와 같은지 회사 정책을 확인한 뒤 쓰세요.
 
-## 7. 한계
+## 8. 한계
 
 - 조회 방식이라 최대 `pollIntervalSec + debounceSec`만큼 늦게 리뷰합니다.
 - 작성자 PC가 꺼져 있으면 리뷰하지 않습니다. 켜지면 열린 PR 중 리뷰하지 않은 커밋을 리뷰합니다.

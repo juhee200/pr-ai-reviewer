@@ -7,7 +7,7 @@ import { emptyState, prKey } from '../src/state.ts';
 const REPO = 'owner/repo';
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
-const OPTIONS = { debounceSec: 90, includeDrafts: true, maxFailures: 3 };
+const OPTIONS = { debounceSec: 90, includeDrafts: true, maxFailures: 3, postMode: false };
 
 function pr(number: number, sha: string, isDraft = false): PullRequest {
   return { repo: REPO, number, title: `PR ${number}`, isDraft, headSha: sha, headRef: 'feature', baseRef: 'develop', url: '', updatedAt: '' };
@@ -45,12 +45,22 @@ describe('schedule', () => {
   });
 
   it('이미 리뷰한 커밋은 건너뛰고, 새 커밋이 오면 다시 대기한다', () => {
-    const reviewed = markReviewed(emptyState(), REPO, 1, SHA_A, at(0));
+    const reviewed = markReviewed(emptyState(), REPO, 1, SHA_A, at(0), 'dry-run');
     const same = schedule(REPO, [pr(1, SHA_A)], reviewed, at(10), OPTIONS);
     assert.equal(same.decisions[0]?.action, 'skip');
 
     const updated = schedule(REPO, [pr(1, SHA_B)], reviewed, at(10), OPTIONS);
     assert.equal(updated.decisions[0]?.action, 'wait');
+  });
+
+  it('게시 모드에서는 dry-run으로만 리뷰한 커밋을 다시 처리하고, 게시 모드로 처리한 커밋은 건너뛴다', () => {
+    const dryRunReviewed = markReviewed(emptyState(), REPO, 1, SHA_A, at(0), 'dry-run');
+    const inPostMode = schedule(REPO, [pr(1, SHA_A)], dryRunReviewed, at(10), { ...OPTIONS, postMode: true });
+    assert.equal(inPostMode.decisions[0]?.action, 'wait');
+
+    const posted = markReviewed(emptyState(), REPO, 1, SHA_A, at(0), 'post');
+    assert.equal(schedule(REPO, [pr(1, SHA_A)], posted, at(10), { ...OPTIONS, postMode: true }).decisions[0]?.action, 'skip');
+    assert.equal(schedule(REPO, [pr(1, SHA_A)], posted, at(10), OPTIONS).decisions[0]?.action, 'skip');
   });
 
   it('Draft 제외 설정이면 Draft PR을 건너뛰고, 기본 설정이면 리뷰 대상에 넣는다', () => {

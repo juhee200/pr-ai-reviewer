@@ -1,5 +1,5 @@
 import type { PullRequest } from './github.ts';
-import { prKey, type State } from './state.ts';
+import { prKey, type ReviewMode, type State } from './state.ts';
 
 export type Action = 'review' | 'wait' | 'skip';
 
@@ -13,6 +13,8 @@ export interface ScheduleOptions {
   debounceSec: number;
   includeDrafts: boolean;
   maxFailures: number;
+  /** 게시 모드면 dry-run으로만 리뷰한 커밋은 아직 처리하지 않은 것으로 본다. */
+  postMode: boolean;
 }
 
 /**
@@ -36,7 +38,8 @@ export function schedule(
       decisions.push({ pr, action: 'skip', reason: 'Draft PR 제외 설정' });
       continue;
     }
-    if (next.reviewed[key]?.sha === pr.headSha) {
+    const reviewed = next.reviewed[key];
+    if (reviewed?.sha === pr.headSha && (!options.postMode || reviewed.mode === 'post')) {
       delete next.pending[key];
       decisions.push({ pr, action: 'skip', reason: '이미 리뷰한 커밋' });
       continue;
@@ -71,11 +74,18 @@ export function schedule(
   return { decisions, state: next };
 }
 
-export function markReviewed(state: State, repo: string, number: number, sha: string, now: Date): State {
+export function markReviewed(
+  state: State,
+  repo: string,
+  number: number,
+  sha: string,
+  now: Date,
+  mode: ReviewMode,
+): State {
   const key = prKey(repo, number);
   const pending = { ...state.pending };
   delete pending[key];
-  return { version: 1, reviewed: { ...state.reviewed, [key]: { sha, at: now.toISOString() } }, pending };
+  return { version: 1, reviewed: { ...state.reviewed, [key]: { sha, at: now.toISOString(), mode } }, pending };
 }
 
 export function markFailed(state: State, repo: string, number: number, sha: string, now: Date): State {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import {
@@ -18,6 +18,7 @@ import { getPr, hasReviewMarker, listMyOpenPrs } from './github.ts';
 import { reviewPullRequest } from './reviewer.ts';
 import { SEVERITIES, type Severity } from './review/schema.ts';
 import { markFailed, markReviewed, schedule, type Action } from './scheduler.ts';
+import { installService, serviceStatus, uninstallService } from './service.ts';
 import { loadState, saveState } from './state.ts';
 
 const HELP = `pr-ai-reviewer: 내가 올린 PR을 이 PC의 Claude Code 또는 Codex로 리뷰합니다.
@@ -27,6 +28,9 @@ const HELP = `pr-ai-reviewer: 내가 올린 PR을 이 PC의 Claude Code 또는 C
   pr-ai-reviewer review <owner/repo> <번호>   PR 하나를 지금 리뷰합니다
   pr-ai-reviewer run                          내 열린 PR을 감시하며 새 커밋마다 리뷰합니다
   pr-ai-reviewer status                       대기 중인 PR과 리뷰 기록을 보여줍니다
+  pr-ai-reviewer service install [--post]     로그인 시 자동 실행으로 등록합니다 (macOS)
+  pr-ai-reviewer service uninstall            자동 실행 등록을 해제합니다
+  pr-ai-reviewer service status               자동 실행 상태와 최근 로그를 보여줍니다
 
 옵션
   --config <경로>         설정 파일 (기본: ${defaultConfigPath()})
@@ -175,7 +179,7 @@ async function pollOnce(config: Config, values: CliValues, statePath: string): P
       log(`${repo} PR 조회 실패: ${errorMessage(error)}`);
       continue;
     }
-    const scheduled = schedule(repo, prs, state, new Date(), config);
+    const scheduled = schedule(repo, prs, state, new Date(), { ...config, postMode: !dryRun });
     if (values.plan) {
       if (scheduled.decisions.length === 0) log(`${repo}: 내 열린 PR 없음`);
       for (const { pr, action, reason } of scheduled.decisions) {
@@ -194,10 +198,10 @@ async function pollOnce(config: Config, values: CliValues, statePath: string): P
       try {
         if (!dryRun && (await hasReviewMarker(repo, pr.number, pr.headSha))) {
           log(`${repo}#${pr.number}: 같은 커밋의 리뷰가 이미 PR에 있어 건너뜁니다.`);
-          state = markReviewed(state, repo, pr.number, pr.headSha, new Date());
+          state = markReviewed(state, repo, pr.number, pr.headSha, new Date(), 'post');
         } else {
           const outcome = await reviewPullRequest(config, { pr, engine, model, dryRun }, log);
-          state = markReviewed(state, repo, pr.number, pr.headSha, new Date());
+          state = markReviewed(state, repo, pr.number, pr.headSha, new Date(), dryRun ? 'dry-run' : 'post');
           log(
             `${repo}#${pr.number} 리뷰 완료: ${formatCounts(outcome.counts)} · ` +
               `${outcome.posted ? 'PR에 게시' : 'dry-run 저장'} ${outcome.outputPath}`,
@@ -249,6 +253,31 @@ async function commandStatus(config: Config): Promise<void> {
   }
 }
 
+async function commandService(values: CliValues, args: string[], configPath: string): Promise<void> {
+  const [action] = args;
+  if (action === 'install') {
+    // 등록 전에 설정을 검증해, 잘못된 설정으로 자동 실행이 재시작을 반복하지 않게 한다.
+    const absoluteConfigPath = resolve(configPath);
+    const config = await loadConfig(absoluteConfigPath);
+    ensureReposConfigured(config, absoluteConfigPath);
+    const dryRun = resolveDryRun(values, config);
+    const runArgs = ['run', dryRun ? '--dry-run' : '--post', '--config', absoluteConfigPath];
+    if (values.engine !== undefined) runArgs.push('--engine', resolveEngine(values, config));
+    if (values.model !== undefined) runArgs.push('--model', validateModel(values.model));
+    await installService(runArgs, log);
+    log(dryRun ? 'dry-run 모드로 등록했습니다. PR에 게시하지 않습니다.' : 'PR 게시 모드로 등록했습니다.');
+    return;
+  }
+  if (action === 'uninstall') return uninstallService(log);
+  if (action === 'status') {
+    const status = await serviceStatus();
+    console.log(status.loaded ? `등록됨 · 상태 ${status.state ?? '알 수 없음'}${status.pid ? ` · PID ${status.pid}` : ''} · 마지막 종료 코드 ${status.lastExitCode ?? '-'}` : '등록되지 않음');
+    console.log(`최근 로그\n${status.logTail}`);
+    return;
+  }
+  throw new Error('사용법: pr-ai-reviewer service <install|uninstall|status>');
+}
+
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     args: process.argv.slice(2),
@@ -274,6 +303,7 @@ async function main(): Promise<void> {
 
   const configPath = values.config ?? defaultConfigPath();
   if (command === 'init') return commandInit(configPath);
+  if (command === 'service') return commandService(values, args, configPath);
 
   const config = await loadConfig(configPath);
   switch (command) {

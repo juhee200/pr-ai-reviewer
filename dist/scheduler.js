@@ -13,7 +13,8 @@ export function schedule(repo, prs, state, now, options) {
             decisions.push({ pr, action: 'skip', reason: 'Draft PR 제외 설정' });
             continue;
         }
-        if (next.reviewed[key]?.sha === pr.headSha) {
+        const reviewed = next.reviewed[key];
+        if (reviewed?.sha === pr.headSha && (!options.postMode || reviewed.mode === 'post')) {
             delete next.pending[key];
             decisions.push({ pr, action: 'skip', reason: '이미 리뷰한 커밋' });
             continue;
@@ -42,11 +43,11 @@ export function schedule(repo, prs, state, now, options) {
     }
     return { decisions, state: next };
 }
-export function markReviewed(state, repo, number, sha, now) {
+export function markReviewed(state, repo, number, sha, now, mode) {
     const key = prKey(repo, number);
     const pending = { ...state.pending };
     delete pending[key];
-    return { version: 1, reviewed: { ...state.reviewed, [key]: { sha, at: now.toISOString() } }, pending };
+    return { version: 1, reviewed: { ...state.reviewed, [key]: { sha, at: now.toISOString(), mode } }, pending };
 }
 export function markFailed(state, repo, number, sha, now) {
     const key = prKey(repo, number);

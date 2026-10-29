@@ -1,9 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+export type ReviewMode = 'dry-run' | 'post';
+
 export interface ReviewedEntry {
   sha: string;
   at: string;
+  /** 어떤 모드로 리뷰했는지. 없으면 dry-run으로 본다. */
+  mode?: ReviewMode;
 }
 
 export interface PendingEntry {
