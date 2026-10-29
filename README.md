@@ -37,7 +37,7 @@ pr-ai-reviewer init
 
 `--install-links`를 빼면 npm(11.17에서 확인)이 패키지를 복사하지 않고 임시 폴더로 링크만 걸어, 설치 직후 명령을 찾지 못합니다.
 
-저장소가 비공개인 동안에는 접근 권한이 있는 계정만 설치할 수 있습니다. 새 버전은 태그만 바꿔 같은 명령을 다시 실행하고, 삭제는 `npm uninstall -g pr-ai-reviewer`로 합니다.
+새 버전은 태그만 바꿔 같은 명령을 다시 실행하고, 삭제는 `npm uninstall -g pr-ai-reviewer`로 합니다.
 
 소스에서 직접 실행하려면 다음과 같이 합니다. Node의 TypeScript 타입 제거 기능을 써서 빌드 없이 실행됩니다.
 
@@ -115,3 +115,7 @@ pr-ai-reviewer service uninstall        # 해제
 - 조회 방식이라 최대 `pollIntervalSec + debounceSec`만큼 늦게 리뷰합니다.
 - 작성자 PC가 꺼져 있으면 리뷰하지 않습니다. 켜지면 열린 PR 중 리뷰하지 않은 커밋을 리뷰합니다.
 - 첫 리뷰 때 저장소 캐시를 만들고 head 커밋의 파일을 받으므로 시간이 더 걸립니다.
+
+## 9. 라이선스
+
+[MIT](LICENSE)
