@@ -31,9 +31,11 @@ PR을 IntelliJ, 웹, CLI 중 어디서 만들었는지와 관계없이 GitHub에
 GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
 ```bash
-npm install -g git+https://github.com/juhee200/pr-ai-reviewer.git#v0.1.1
+npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.1.1
 pr-ai-reviewer init
 ```
+
+`--install-links`를 빼면 npm(11.17에서 확인)이 패키지를 복사하지 않고 임시 폴더로 링크만 걸어, 설치 직후 명령을 찾지 못합니다.
 
 저장소가 비공개인 동안에는 접근 권한이 있는 계정만 설치할 수 있습니다. 새 버전은 태그만 바꿔 같은 명령을 다시 실행하고, 삭제는 `npm uninstall -g pr-ai-reviewer`로 합니다.
 
