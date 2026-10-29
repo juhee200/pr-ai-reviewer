@@ -53,7 +53,7 @@ brew install --cask juhee200/tap/pr-ai-reviewer
 | 작업 | 명령 | 동작 |
 |---|---|---|
 | 업데이트 | `brew upgrade --cask pr-ai-reviewer` | 앱을 바꾼 뒤 감시 프로세스를 새 버전으로 다시 시작 |
-| 삭제 | `brew uninstall --cask pr-ai-reviewer` | 감시 프로세스가 앱이 지워진 것을 확인하고 2분 안에 자동 실행 등록을 지운 뒤 종료 |
+| 삭제 | `brew uninstall --cask pr-ai-reviewer` | 감시 프로세스가 앱이 2분 넘게 없는 것을 확인하면 자동 실행 등록을 지우고 종료 (시험에서 약 2분 30초) |
 | 설정·기록까지 삭제 | `brew uninstall --zap --cask pr-ai-reviewer` | 자동 실행 등록과 설정·상태·캐시·로그 폴더 삭제 |
 
 - 개발자 인증서 없이 ad-hoc 서명한 앱입니다. cask가 설치할 때 quarantine 속성을 지워 Gatekeeper가 막지 않습니다. Release의 zip을 직접 받아 설치했다면 `xattr -dr com.apple.quarantine "/Applications/PR AI Reviewer.app"`을 실행한 뒤 엽니다.
@@ -64,7 +64,7 @@ brew install --cask juhee200/tap/pr-ai-reviewer
 GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
 ```bash
-npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.3.0
+npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.3.1
 pr-ai-reviewer init
 ```
 

@@ -184,11 +184,15 @@ export async function installService(runArgs: string[], log: (message: string) =
   log(`로그: ${spec.logFile}`);
 }
 
-/** 등록돼 있으면 새 코드로 다시 시작한다. Homebrew로 앱을 업그레이드한 뒤 cask가 부른다. */
+/**
+ * 등록돼 있으면 새 코드로 다시 시작한다. Homebrew로 앱을 업그레이드한 뒤 cask가 부른다.
+ * 앱을 지울 때 감시 프로세스가 plist를 지웠다면 launchd에 작업만 남아 있으므로 다시 시작하지 않는다.
+ */
 export async function restartService(log: (message: string) => void): Promise<void> {
   ensureMacOS();
-  const result = await run('launchctl', ['kickstart', '-k', `${domain()}/${SERVICE_LABEL}`]);
-  log(result.code === 0 ? '자동 실행을 다시 시작했습니다.' : '자동 실행이 등록돼 있지 않아 다시 시작하지 않았습니다.');
+  const registered = await access(plistPath()).then(() => true, () => false);
+  const result = registered ? await run('launchctl', ['kickstart', '-k', `${domain()}/${SERVICE_LABEL}`]) : null;
+  log(result?.code === 0 ? '자동 실행을 다시 시작했습니다.' : '자동 실행이 등록돼 있지 않아 다시 시작하지 않았습니다.');
 }
 
 export async function uninstallService(log: (message: string) => void): Promise<void> {
@@ -223,8 +227,9 @@ export async function serviceStatus(): Promise<ServiceStatus & { logTail: string
   } catch {
     logTail = '(로그 없음)';
   }
-  if (printed.code !== 0) return { loaded: false, state: null, pid: null, lastExitCode: null, scriptPath: null, logTail };
-  const plist = await readFile(plistPath(), 'utf8').catch(() => '');
+  // plist가 없으면 다음 로그인 때 시작되지 않으므로, launchd에 작업이 남아 있어도 등록되지 않은 것으로 본다.
+  const plist = await readFile(plistPath(), 'utf8').catch(() => null);
+  if (printed.code !== 0 || plist === null) return { loaded: false, state: null, pid: null, lastExitCode: null, scriptPath: null, logTail };
   const scriptPath = scriptPathFromArguments(parseProgramArguments(plist));
   return { loaded: true, ...parseLaunchctlPrint(printed.stdout), scriptPath, logTail };
 }
