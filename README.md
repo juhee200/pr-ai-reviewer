@@ -28,10 +28,10 @@ PR을 IntelliJ, 웹, CLI 중 어디서 만들었는지와 관계없이 GitHub에
 
 ## 3. 설치
 
-GitHub 저장소에서 바로 설치합니다. 설치 중에 자동으로 빌드됩니다.
+GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
 ```bash
-npm install -g git+https://github.com/juhee200/pr-ai-reviewer.git#v0.1.0
+npm install -g git+https://github.com/juhee200/pr-ai-reviewer.git#v0.1.1
 pr-ai-reviewer init
 ```
 
@@ -44,6 +44,8 @@ git clone https://github.com/juhee200/pr-ai-reviewer.git
 cd pr-ai-reviewer && npm install
 node src/cli.ts --help
 ```
+
+릴리스할 때는 `npm run build`로 `dist`를 다시 만든 뒤 함께 커밋하고 태그를 붙입니다.
 
 ## 4. 설정
 
