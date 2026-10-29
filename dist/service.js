@@ -5,9 +5,20 @@ import { delimiter, dirname, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { ExecError, run } from './exec.js';
 // macOS 로그인 시 자동 실행(launchd LaunchAgent). 사용자 계정 범위라 관리자 권한이 필요 없다.
-export const SERVICE_LABEL = 'com.github.juhee200.pr-ai-reviewer';
+export const SERVICE_LABEL = 'io.github.juhee200.pr-ai-reviewer.agent';
+// v0.2.0까지 쓰던 이름. 등록·해제할 때 함께 정리한다.
+const LEGACY_LABELS = ['com.github.juhee200.pr-ai-reviewer'];
+function plistPathFor(label) {
+    return join(homedir(), 'Library', 'LaunchAgents', `${label}.plist`);
+}
 export function plistPath() {
-    return join(homedir(), 'Library', 'LaunchAgents', `${SERVICE_LABEL}.plist`);
+    return plistPathFor(SERVICE_LABEL);
+}
+async function removeLegacyAgents() {
+    for (const label of LEGACY_LABELS) {
+        await run('launchctl', ['bootout', `${domain()}/${label}`]);
+        await rm(plistPathFor(label), { force: true });
+    }
 }
 export function logPath() {
     return join(homedir(), 'Library', 'Logs', 'pr-ai-reviewer', 'agent.log');
@@ -20,8 +31,11 @@ export function xmlEscape(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
 }
+// CLI 파일이 없으면 오류 대신 정상 종료하는 셸 한 줄. 경로는 인자로만 넘기고 셸 문자열에 넣지 않는다.
+// 앱이나 npm 패키지를 지운 뒤 로그인했을 때 launchd가 실패한 실행을 30초마다 반복하지 않게 한다.
+const SCRIPT_GUARD = '[ -f "$1" ] || exit 0; exec "$0" "$@"';
 export function buildPlist(spec) {
-    const programArguments = [spec.nodePath, spec.scriptPath, ...spec.args]
+    const programArguments = ['/bin/sh', '-c', SCRIPT_GUARD, spec.nodePath, spec.scriptPath, ...spec.args]
         .map((arg) => `    <string>${xmlEscape(arg)}</string>`)
         .join('\n');
     return `<?xml version="1.0" encoding="UTF-8"?>
@@ -55,6 +69,31 @@ ${programArguments}
 </dict>
 </plist>
 `;
+}
+function xmlUnescape(value) {
+    return value
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&');
+}
+/** buildPlist가 만든 plist에서 ProgramArguments를 읽는다. 메뉴바 앱이 어느 CLI로 등록됐는지 확인하는 데 쓴다. */
+export function parseProgramArguments(plist) {
+    const array = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/.exec(plist)?.[1] ?? '';
+    return [...array.matchAll(/<string>([\s\S]*?)<\/string>/g)].map((match) => xmlUnescape(match[1] ?? ''));
+}
+/** ProgramArguments에서 CLI 파일 경로를 찾는다. 셸 검사를 붙이기 전 형식(node, cli.js, ...)도 읽는다. */
+export function scriptPathFromArguments(args) {
+    return (args[0] === '/bin/sh' ? args[4] : args[1]) ?? null;
+}
+/** 등록된 자동 실행이 이 CLI 파일을 가리킬 때만 plist를 지운다. 이미 다른 CLI로 다시 등록했다면 그대로 둔다. */
+export async function removePlistIfScript(scriptPath) {
+    const plist = await readFile(plistPath(), 'utf8').catch(() => '');
+    if (scriptPathFromArguments(parseProgramArguments(plist)) !== scriptPath)
+        return false;
+    await rm(plistPath(), { force: true });
+    return true;
 }
 /** launchd는 셸의 PATH를 물려받지 않으므로, 쓰는 도구의 디렉터리를 앞에 두고 기본 경로를 뒤에 붙인다. */
 export function composePath(toolDirs, currentPath) {
@@ -111,6 +150,7 @@ export async function installService(runArgs, log) {
     await mkdir(dirname(spec.logFile), { recursive: true });
     await writeFile(plistPath(), buildPlist(spec), 'utf8');
     // 이미 등록돼 있으면 내리고 새 설정으로 다시 올린다.
+    await removeLegacyAgents();
     await run('launchctl', ['bootout', `${domain()}/${SERVICE_LABEL}`]);
     // bootout 직후에는 이전 작업이 아직 내려가는 중이라 bootstrap이 실패할 수 있어 잠시 재시도한다.
     const bootstrapArgs = ['bootstrap', domain(), plistPath()];
@@ -126,8 +166,15 @@ export async function installService(runArgs, log) {
     log(`실행 명령: ${[spec.nodePath, spec.scriptPath, ...spec.args].join(' ')}`);
     log(`로그: ${spec.logFile}`);
 }
+/** 등록돼 있으면 새 코드로 다시 시작한다. Homebrew로 앱을 업그레이드한 뒤 cask가 부른다. */
+export async function restartService(log) {
+    ensureMacOS();
+    const result = await run('launchctl', ['kickstart', '-k', `${domain()}/${SERVICE_LABEL}`]);
+    log(result.code === 0 ? '자동 실행을 다시 시작했습니다.' : '자동 실행이 등록돼 있지 않아 다시 시작하지 않았습니다.');
+}
 export async function uninstallService(log) {
     ensureMacOS();
+    await removeLegacyAgents();
     await run('launchctl', ['bootout', `${domain()}/${SERVICE_LABEL}`]);
     await rm(plistPath(), { force: true });
     log(`해제했습니다: ${plistPath()}`);
@@ -148,6 +195,8 @@ export async function serviceStatus() {
         logTail = '(로그 없음)';
     }
     if (printed.code !== 0)
-        return { loaded: false, state: null, pid: null, lastExitCode: null, logTail };
-    return { loaded: true, ...parseLaunchctlPrint(printed.stdout), logTail };
+        return { loaded: false, state: null, pid: null, lastExitCode: null, scriptPath: null, logTail };
+    const plist = await readFile(plistPath(), 'utf8').catch(() => '');
+    const scriptPath = scriptPathFromArguments(parseProgramArguments(plist));
+    return { loaded: true, ...parseLaunchctlPrint(printed.stdout), scriptPath, logTail };
 }

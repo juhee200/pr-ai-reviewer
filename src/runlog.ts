@@ -6,6 +6,8 @@ export interface RunLogEntry {
   at: string;
   repo: string;
   pr: number;
+  title?: string;
+  url?: string;
   sha: string;
   engine: string;
   model: string | null;
@@ -15,6 +17,7 @@ export interface RunLogEntry {
   costUsd: number | null;
   counts?: Record<Severity, number>;
   posted?: boolean;
+  commentUrl?: string;
   outputPath?: string;
   error?: string;
 }

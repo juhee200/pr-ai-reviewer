@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_CONFIG, parseConfig, validateModel, validatePrNumber, validateRepo } from '../src/config.ts';
+import { DEFAULT_CONFIG, mergeConfigPatch, parseConfig, validateModel, validatePrNumber, validateRepo } from '../src/config.ts';
 
 describe('validateRepo', () => {
   it('owner/name 형식만 받는다', () => {
@@ -25,6 +25,18 @@ describe('validateModel', () => {
   it('옵션처럼 보이는 값과 허용되지 않은 문자를 거부한다', () => {
     for (const good of ['opus', 'claude-sonnet-5-5', 'gpt-5.5-codex', 'claude-opus-5-5[1m]']) assert.equal(validateModel(good), good);
     for (const bad of ['--dangerously-skip-permissions', '-m', 'a b', 'x;y', '']) assert.throws(() => validateModel(bad), /모델/, bad);
+  });
+});
+
+describe('mergeConfigPatch', () => {
+  it('알려진 키만 합치고 검증을 통과해야 한다', () => {
+    const { raw, config } = mergeConfigPatch({ repos: ['a/b'], custom: 1 }, { engine: 'codex', dryRun: false });
+    assert.equal(config.engine, 'codex');
+    assert.equal(config.dryRun, false);
+    assert.deepEqual(raw['repos'], ['a/b']);
+    assert.throws(() => mergeConfigPatch(null, { unknownKey: 1 }), /알 수 없는 설정 키/);
+    assert.throws(() => mergeConfigPatch(null, { repos: ['bad'] }), /형식/);
+    assert.throws(() => mergeConfigPatch(null, []), /JSON 객체/);
   });
 });
 

@@ -23,6 +23,7 @@ export interface ReviewOutcome {
   body: string;
   outputPath: string;
   posted: boolean;
+  commentUrl: string | null;
   skippedReason?: string;
   counts: Record<Severity, number>;
   durationMs: number;
@@ -75,6 +76,7 @@ export async function reviewPullRequest(
     const counts = countBySeverity(output.result.findings);
 
     let posted = false;
+    let commentUrl: string | null = null;
     let skippedReason: string | undefined;
     const secrets = findSecrets(body);
     if (secrets.length > 0) {
@@ -85,7 +87,7 @@ export async function reviewPullRequest(
       if (await hasReviewMarker(pr.repo, pr.number, sha)) {
         skippedReason = '같은 커밋의 리뷰가 이미 PR에 있음';
       } else {
-        await postComment(pr.repo, pr.number, body);
+        commentUrl = await postComment(pr.repo, pr.number, body);
         posted = true;
       }
     }
@@ -94,6 +96,8 @@ export async function reviewPullRequest(
       at: new Date().toISOString(),
       repo: pr.repo,
       pr: pr.number,
+      title: pr.title,
+      url: pr.url,
       sha,
       engine,
       model: output.model,
@@ -103,12 +107,14 @@ export async function reviewPullRequest(
       costUsd: output.costUsd,
       counts,
       posted,
+      ...(commentUrl ? { commentUrl } : {}),
       outputPath,
     });
     return {
       body,
       outputPath,
       posted,
+      commentUrl,
       ...(skippedReason ? { skippedReason } : {}),
       counts,
       durationMs,
@@ -120,6 +126,8 @@ export async function reviewPullRequest(
       at: new Date().toISOString(),
       repo: pr.repo,
       pr: pr.number,
+      title: pr.title,
+      url: pr.url,
       sha,
       engine,
       model: request.model,

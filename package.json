@@ -1,6 +1,6 @@
 {
   "name": "pr-ai-reviewer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "내가 올린 PR을 감지해 이 PC의 Claude Code 또는 Codex CLI로 리뷰하는 로컬 상주 도구",
   "private": true,
   "license": "MIT",

@@ -77,11 +77,19 @@ export async function hasReviewMarker(repo: string, number: number, sha: string)
   return bodyHasMarkerFor(stdout, sha);
 }
 
-export async function postComment(repo: string, number: number, body: string): Promise<void> {
+/** gh pr comment는 만든 코멘트의 URL을 출력한다. GitHub 주소가 아니면 버린다. */
+export function parseCommentUrl(stdout: string): string | null {
+  const url = stdout.trim().split('\n').at(-1)?.trim() ?? '';
+  return /^https:\/\/github\.com\/[^\s]+$/.test(url) ? url : null;
+}
+
+/** 게시한 코멘트의 URL을 돌려준다. */
+export async function postComment(repo: string, number: number, body: string): Promise<string | null> {
   validateRepo(repo);
   // 본문은 인자가 아닌 표준 입력으로 넘긴다.
-  await runOk('gh', ['pr', 'comment', String(validatePrNumber(number)), '--repo', repo, '--body-file', '-'], {
+  const stdout = await runOk('gh', ['pr', 'comment', String(validatePrNumber(number)), '--repo', repo, '--body-file', '-'], {
     input: body,
     timeoutMs: GH_TIMEOUT_MS,
   });
+  return parseCommentUrl(stdout);
 }

@@ -46,6 +46,7 @@ export async function reviewPullRequest(config, request, log) {
         const outputPath = await saveReviewFile(config.stateDir, pr.repo, pr.number, sha, body);
         const counts = countBySeverity(output.result.findings);
         let posted = false;
+        let commentUrl = null;
         let skippedReason;
         const secrets = findSecrets(body);
         if (secrets.length > 0) {
@@ -58,7 +59,7 @@ export async function reviewPullRequest(config, request, log) {
                 skippedReason = '같은 커밋의 리뷰가 이미 PR에 있음';
             }
             else {
-                await postComment(pr.repo, pr.number, body);
+                commentUrl = await postComment(pr.repo, pr.number, body);
                 posted = true;
             }
         }
@@ -66,6 +67,8 @@ export async function reviewPullRequest(config, request, log) {
             at: new Date().toISOString(),
             repo: pr.repo,
             pr: pr.number,
+            title: pr.title,
+            url: pr.url,
             sha,
             engine,
             model: output.model,
@@ -75,12 +78,14 @@ export async function reviewPullRequest(config, request, log) {
             costUsd: output.costUsd,
             counts,
             posted,
+            ...(commentUrl ? { commentUrl } : {}),
             outputPath,
         });
         return {
             body,
             outputPath,
             posted,
+            commentUrl,
             ...(skippedReason ? { skippedReason } : {}),
             counts,
             durationMs,
@@ -93,6 +98,8 @@ export async function reviewPullRequest(config, request, log) {
             at: new Date().toISOString(),
             repo: pr.repo,
             pr: pr.number,
+            title: pr.title,
+            url: pr.url,
             sha,
             engine,
             model: request.model,

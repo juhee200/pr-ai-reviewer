@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 const XDG_CONFIG = process.env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config');
@@ -20,8 +20,10 @@ export const DEFAULT_CONFIG = {
     stateDir: join(XDG_STATE, 'pr-ai-reviewer'),
     claudeSettingSources: 'project',
 };
+/** PR_AI_REVIEWER_CONFIG가 있으면 그 경로를 쓴다. 메뉴바 앱도 이 값을 CLI에 그대로 넘긴다. */
 export function defaultConfigPath() {
-    return join(XDG_CONFIG, 'pr-ai-reviewer', 'config.json');
+    const override = process.env['PR_AI_REVIEWER_CONFIG'];
+    return override ? expandHome(override) : join(XDG_CONFIG, 'pr-ai-reviewer', 'config.json');
 }
 // GitHub 소유자·저장소 이름에 쓰이는 문자만 허용한다. 이 값은 캐시 경로와 gh 인자에 쓰인다.
 // 소유자는 하이픈으로 시작할 수 없고, 저장소는 .github처럼 점으로 시작할 수 있다.
@@ -136,6 +138,42 @@ export async function loadConfig(path) {
         throw new Error(`설정 파일이 올바른 JSON이 아닙니다: ${path}`);
     }
     return parseConfig(parsed);
+}
+/** 설정 파일의 원본 객체를 읽는다. 파일이 없으면 null. */
+export async function readRawConfig(path) {
+    let text;
+    try {
+        text = await readFile(path, 'utf8');
+    }
+    catch (error) {
+        if (error.code === 'ENOENT')
+            return null;
+        throw error;
+    }
+    const parsed = JSON.parse(text);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+        throw new Error(`설정 파일은 JSON 객체여야 합니다: ${path}`);
+    return parsed;
+}
+/**
+ * 메뉴바 앱이 보낸 변경분을 기존 설정에 합친다. 알려진 키만 받고, 합친 결과가 검증을 통과해야 한다.
+ * 저장할 원본 객체와 검증된 설정을 함께 돌려준다.
+ */
+export function mergeConfigPatch(raw, patch) {
+    if (patch === null || typeof patch !== 'object' || Array.isArray(patch))
+        throw new Error('설정 변경값은 JSON 객체여야 합니다.');
+    const allowed = new Set(Object.keys(DEFAULT_CONFIG));
+    const unknownKeys = Object.keys(patch).filter((key) => !allowed.has(key));
+    if (unknownKeys.length > 0)
+        throw new Error(`알 수 없는 설정 키입니다: ${unknownKeys.join(', ')}`);
+    const merged = { ...(raw ?? {}), ...patch };
+    return { raw: merged, config: parseConfig(merged) };
+}
+export async function saveRawConfig(path, raw) {
+    await mkdir(dirname(path), { recursive: true });
+    const temp = `${path}.${process.pid}.tmp`;
+    await writeFile(temp, `${JSON.stringify(raw, null, 2)}\n`, 'utf8');
+    await rename(temp, path);
 }
 /** 설정 파일이 없을 때만 기본값으로 만든다. 이미 있으면 덮어쓰지 않고 false를 돌려준다. */
 export async function writeDefaultConfig(path) {
