@@ -1,6 +1,8 @@
+import { findCommentRange, normalizeFindingPath } from './diff.js';
 import { buildMarker } from './marker.js';
 import { countBySeverity, SEVERITIES } from './review/schema.js';
 const ENGINE_LABEL = { claude: 'Claude Code', codex: 'Codex' };
+export const SEVERITY_EMOJI = { P0: '🔴', P1: '🟠', P2: '🟡', P3: '🔵' };
 /**
  * AI가 쓴 문장은 그대로 PR에 올라가므로 두 가지를 무력화한다.
  * - `@아이디`: GitHub가 해당 사용자에게 알림을 보낸다.
@@ -21,11 +23,43 @@ export function formatDuration(ms) {
     const seconds = totalSec % 60;
     return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
 }
+/** 모든 지적을 본문 하나에 담는다. 로컬 파일, 표준 출력에 쓴다. */
 export function renderReview(input) {
-    const { result } = input;
-    const counts = countBySeverity(result.findings);
-    const countText = SEVERITIES.map((severity) => `${severity} ${counts[severity]}건`).join(' · ');
-    const ordered = [...result.findings].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity));
+    return buildReviewPost(input, new Map()).body;
+}
+/**
+ * PR 리뷰를 만든다. diff에 나오는 줄을 가리키는 지적은 그 줄의 코멘트로 달아 지적마다 답글 스레드가 생기게 하고,
+ * diff 밖을 가리키거나 줄이 없는 지적은 코드를 인용해 본문에 넣는다.
+ */
+export function buildReviewPost(input, diffLineRanges) {
+    const comments = [];
+    const bodyItems = [];
+    for (const item of orderedItems(input)) {
+        const { finding } = item;
+        const range = findCommentRange(diffLineRanges, finding.file, finding.line, finding.endLine);
+        if (range === null) {
+            bodyItems.push(item);
+            continue;
+        }
+        comments.push({
+            path: normalizeFindingPath(finding.file),
+            startLine: range.start < range.end ? range.start : null,
+            line: range.end,
+            body: renderCommentBody(finding, input.engine),
+        });
+    }
+    return { body: renderBody(input, bodyItems, comments.length), comments };
+}
+function orderedItems(input) {
+    const items = input.result.findings.map((finding, index) => ({ finding, quote: input.quotes?.[index] ?? null }));
+    return items.sort((a, b) => SEVERITIES.indexOf(a.finding.severity) - SEVERITIES.indexOf(b.finding.severity));
+}
+function severityLabel(severity) {
+    return `${SEVERITY_EMOJI[severity]} [${severity}]`;
+}
+function renderBody(input, items, inlineCount) {
+    const counts = countBySeverity(input.result.findings);
+    const countText = SEVERITIES.map((severity) => `${SEVERITY_EMOJI[severity]} ${severity} ${counts[severity]}건`).join(' · ');
     const lines = [
         buildMarker(input.sha, input.engine),
         `### AI 리뷰 (작성자 PC의 ${ENGINE_LABEL[input.engine]}에서 실행)`,
@@ -37,16 +71,53 @@ export function renderReview(input) {
     if (input.truncated) {
         lines.push(`- diff가 ${input.diffLines}줄이라 앞부분만 프롬프트에 넣었고, 나머지는 AI가 git으로 직접 읽었습니다.`);
     }
-    lines.push('', `**요약** ${sanitize(result.summary)}`);
-    if (ordered.length === 0) {
+    lines.push('', `**요약** ${sanitize(input.result.summary)}`);
+    if (input.result.findings.length === 0) {
         lines.push('', '지적 사항이 없습니다.');
     }
-    for (const finding of ordered) {
-        const location = finding.line === null ? finding.file : `${finding.file}:${finding.line}`;
-        lines.push('', `#### [${finding.severity}] ${sanitize(finding.title)}`, `\`${sanitize(location)}\``, '', sanitize(finding.detail));
+    if (inlineCount > 0) {
+        lines.push('', `지적 ${inlineCount}건은 해당 코드 줄에 코멘트로 남겼습니다.`);
+        if (items.length > 0)
+            lines.push(`아래 ${items.length}건은 이번 diff에 없는 줄을 가리켜 코드 줄에 달 수 없어 본문에 남깁니다.`);
+    }
+    for (const { finding, quote } of items) {
+        lines.push('', `#### ${severityLabel(finding.severity)} ${sanitize(finding.title)}`, `\`${sanitize(formatLocation(finding))}\``);
+        if (quote !== null)
+            lines.push('', ...renderQuote(finding.file, quote));
+        lines.push('', sanitize(finding.detail));
         if (finding.suggestion.trim() !== '')
             lines.push('', `제안: ${sanitize(finding.suggestion)}`);
     }
-    lines.push('', '---', '<sub>pr-ai-reviewer가 PR 작성자의 PC에서 실행한 결과입니다. P1 이상은 반영 여부와 이유를 답글로 남겨 주세요.</sub>', '');
+    lines.push('', '---', '<sub>pr-ai-reviewer가 PR 작성자의 PC에서 실행한 결과입니다. P1 이상은 지적마다 반영 여부와 이유를 답글로 남겨 주세요.</sub>', '');
     return lines.join('\n');
+}
+function renderCommentBody(finding, engine) {
+    const lines = [`**${severityLabel(finding.severity)} ${sanitize(finding.title)}**`, '', sanitize(finding.detail)];
+    if (finding.suggestion.trim() !== '')
+        lines.push('', `제안: ${sanitize(finding.suggestion)}`);
+    lines.push('', `<sub>AI 리뷰 · ${ENGINE_LABEL[engine]}</sub>`);
+    return lines.join('\n');
+}
+function formatLocation(finding) {
+    if (finding.line === null)
+        return finding.file;
+    return finding.endLine === null ? `${finding.file}:${finding.line}` : `${finding.file}:${finding.line}-${finding.endLine}`;
+}
+/** 코드 블록으로 인용한다. 코드 안의 백틱이 블록을 닫지 못하게 더 긴 펜스를 쓴다. */
+export function renderQuote(file, quote) {
+    // 코드 블록 안의 숨은 주석도 표식 검사에는 걸리므로 보이는 모양은 두고 문자열만 끊는다.
+    const code = quote.lines.map((line) => line.replace(/<!--/g, '<!​--'));
+    const longestRun = Math.max(0, ...code.map((line) => Math.max(0, ...(line.match(/`+/g) ?? []).map((run) => run.length))));
+    const fence = '`'.repeat(Math.max(3, longestRun + 1));
+    const lines = [`${fence}${codeLanguage(file)}`, ...code, fence];
+    if (quote.omittedLines > 0)
+        lines.push(`<sub>이하 ${quote.omittedLines}줄 생략</sub>`);
+    return lines;
+}
+/** GitHub 코드 블록은 확장자를 언어 이름으로 받는다. */
+function codeLanguage(file) {
+    const name = file.split('/').at(-1) ?? '';
+    const dot = name.lastIndexOf('.');
+    const extension = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+    return /^[a-z0-9]{1,10}$/.test(extension) ? extension : '';
 }

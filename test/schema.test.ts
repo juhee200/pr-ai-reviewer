@@ -13,6 +13,18 @@ describe('parseReviewResult', () => {
       ],
     });
     assert.deepEqual(result.findings.map((finding) => finding.line), [3, null, null]);
+    // endLine이 없거나 첫 줄보다 앞이면 한 줄 지적으로 본다.
+    assert.deepEqual(result.findings.map((finding) => finding.endLine), [null, null, null]);
+    const ranged = parseReviewResult({
+      summary: 's',
+      findings: [
+        { severity: 'P1', file: 'a', line: 3, endLine: 7, title: 't', detail: 'd', suggestion: '' },
+        { severity: 'P1', file: 'a', line: 3, endLine: 3, title: 't', detail: 'd', suggestion: '' },
+        { severity: 'P1', file: 'a', line: 3, endLine: 1, title: 't', detail: 'd', suggestion: '' },
+        { severity: 'P1', file: 'a', line: null, endLine: 5, title: 't', detail: 'd', suggestion: '' },
+      ],
+    });
+    assert.deepEqual(ranged.findings.map((finding) => finding.endLine), [7, null, null, null]);
     assert.deepEqual(countBySeverity(result.findings), { P0: 0, P1: 1, P2: 1, P3: 1 });
   });
 

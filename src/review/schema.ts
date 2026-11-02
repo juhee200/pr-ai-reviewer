@@ -5,8 +5,10 @@ export interface Finding {
   severity: Severity;
   /** 저장소 루트 기준 경로. */
   file: string;
-  /** head 커밋 기준 줄 번호. 특정할 수 없으면 null. */
+  /** 고쳐야 할 코드의 첫 줄 번호(head 커밋 기준). 특정할 수 없으면 null. */
   line: number | null;
+  /** 고쳐야 할 코드의 마지막 줄 번호. 한 줄이거나 특정할 수 없으면 null. */
+  endLine: number | null;
   title: string;
   detail: string;
   suggestion: string;
@@ -32,11 +34,12 @@ export const REVIEW_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['severity', 'file', 'line', 'title', 'detail', 'suggestion'],
+        required: ['severity', 'file', 'line', 'endLine', 'title', 'detail', 'suggestion'],
         properties: {
           severity: { type: 'string', enum: [...SEVERITIES] },
           file: { type: 'string' },
           line: { type: ['integer', 'null'] },
+          endLine: { type: ['integer', 'null'] },
           title: { type: 'string' },
           detail: { type: 'string' },
           suggestion: { type: 'string' },
@@ -60,17 +63,24 @@ export function parseReviewResult(raw: unknown): ReviewResult {
     if (typeof severity !== 'string' || !(SEVERITIES as readonly string[]).includes(severity)) {
       throw new Error(`findings[${index}].severity 값이 올바르지 않습니다: ${String(severity)}`);
     }
-    const line = finding['line'];
+    const line = positiveInteger(finding['line']);
+    const endLine = positiveInteger(finding['endLine']);
     return {
       severity: severity as Severity,
       file: requireString(finding, 'file', index),
-      line: typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : null,
+      line,
+      // 첫 줄보다 앞이거나 같은 끝 줄은 한 줄 지적으로 본다.
+      endLine: line !== null && endLine !== null && endLine > line ? endLine : null,
       title: requireString(finding, 'title', index),
       detail: requireString(finding, 'detail', index),
       suggestion: typeof finding['suggestion'] === 'string' ? finding['suggestion'] : '',
     };
   });
   return { summary: value['summary'], findings };
+}
+
+function positiveInteger(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
 }
 
 function requireString(item: Record<string, unknown>, key: string, index: number): string {

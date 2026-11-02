@@ -14,11 +14,12 @@ export const REVIEW_SCHEMA = {
             items: {
                 type: 'object',
                 additionalProperties: false,
-                required: ['severity', 'file', 'line', 'title', 'detail', 'suggestion'],
+                required: ['severity', 'file', 'line', 'endLine', 'title', 'detail', 'suggestion'],
                 properties: {
                     severity: { type: 'string', enum: [...SEVERITIES] },
                     file: { type: 'string' },
                     line: { type: ['integer', 'null'] },
+                    endLine: { type: ['integer', 'null'] },
                     title: { type: 'string' },
                     detail: { type: 'string' },
                     suggestion: { type: 'string' },
@@ -44,17 +45,23 @@ export function parseReviewResult(raw) {
         if (typeof severity !== 'string' || !SEVERITIES.includes(severity)) {
             throw new Error(`findings[${index}].severity 값이 올바르지 않습니다: ${String(severity)}`);
         }
-        const line = finding['line'];
+        const line = positiveInteger(finding['line']);
+        const endLine = positiveInteger(finding['endLine']);
         return {
             severity: severity,
             file: requireString(finding, 'file', index),
-            line: typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : null,
+            line,
+            // 첫 줄보다 앞이거나 같은 끝 줄은 한 줄 지적으로 본다.
+            endLine: line !== null && endLine !== null && endLine > line ? endLine : null,
             title: requireString(finding, 'title', index),
             detail: requireString(finding, 'detail', index),
             suggestion: typeof finding['suggestion'] === 'string' ? finding['suggestion'] : '',
         };
     });
     return { summary: value['summary'], findings };
+}
+function positiveInteger(value) {
+    return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
 }
 function requireString(item, key, index) {
     const value = item[key];

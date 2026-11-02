@@ -3,6 +3,7 @@ import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validateRepo } from './config.js';
+import { parseDiffLineRanges } from './diff.js';
 import { run, runOk } from './exec.js';
 const GIT_TIMEOUT_MS = 10 * 60_000;
 // 한글 파일 이름이 \352\270... 처럼 이스케이프되지 않게 한다.
@@ -74,7 +75,20 @@ export async function prepareWorkspace(cacheDir, pr, sha, maxDiffLines) {
         await run('git', ['-C', mirror, 'worktree', 'prune']);
     };
     try {
-        const diffArgs = [...GIT_BASE_ARGS, '-C', dir, 'diff', '--no-color', '--no-ext-diff', mergeBase, sha];
+        // 사용자 git 설정(diff.context, diff.noprefix 등)과 관계없이 GitHub PR diff와 같은 형식으로 만든다.
+        const diffArgs = [
+            ...GIT_BASE_ARGS,
+            '-C',
+            dir,
+            'diff',
+            '--no-color',
+            '--no-ext-diff',
+            '--unified=3',
+            '--src-prefix=a/',
+            '--dst-prefix=b/',
+            mergeBase,
+            sha,
+        ];
         const [rawDiff, nameOnly, diffStat] = await Promise.all([
             runOk('git', diffArgs, { timeoutMs: GIT_TIMEOUT_MS }),
             runOk('git', [...diffArgs, '--name-only'], { timeoutMs: GIT_TIMEOUT_MS }),
@@ -94,6 +108,7 @@ export async function prepareWorkspace(cacheDir, pr, sha, maxDiffLines) {
                 diff: truncated.text,
                 diffLines: truncated.lines,
                 truncated: truncated.truncated,
+                diffLineRanges: parseDiffLineRanges(rawDiff),
                 dataDir,
                 fullDiffPath,
             },

@@ -1,6 +1,7 @@
-import { runOk } from './exec.ts';
+import { ExecError, runOk } from './exec.ts';
 import { validatePrNumber, validateRepo } from './config.ts';
 import { bodyHasMarkerFor } from './marker.ts';
+import type { ReviewPost } from './render.ts';
 
 export interface PullRequest {
   repo: string;
@@ -66,30 +67,65 @@ export async function getPr(repo: string, number: number): Promise<PullRequest> 
   return toPullRequest(repo, JSON.parse(stdout));
 }
 
-/** 다른 PC나 이전 실행에서 같은 커밋을 이미 리뷰해 게시했는지 확인한다. */
+/**
+ * 다른 PC나 이전 실행에서 같은 커밋을 이미 리뷰해 게시했는지 확인한다.
+ * v0.3.x까지는 PR 코멘트로, 이후에는 PR 리뷰 본문으로 게시하므로 둘 다 본다.
+ */
 export async function hasReviewMarker(repo: string, number: number, sha: string): Promise<boolean> {
   validateRepo(repo);
-  const stdout = await runOk(
-    'gh',
-    ['api', '--paginate', `repos/${repo}/issues/${validatePrNumber(number)}/comments`, '--jq', '.[].body'],
-    { timeoutMs: GH_TIMEOUT_MS },
+  const prNumber = validatePrNumber(number);
+  const bodies = await Promise.all(
+    [`repos/${repo}/issues/${prNumber}/comments`, `repos/${repo}/pulls/${prNumber}/reviews`].map((path) =>
+      runOk('gh', ['api', '--paginate', path, '--jq', '.[].body'], { timeoutMs: GH_TIMEOUT_MS }),
+    ),
   );
-  return bodyHasMarkerFor(stdout, sha);
+  return bodies.some((text) => bodyHasMarkerFor(text, sha));
 }
 
-/** gh pr comment는 만든 코멘트의 URL을 출력한다. GitHub 주소가 아니면 버린다. */
-export function parseCommentUrl(stdout: string): string | null {
-  const url = stdout.trim().split('\n').at(-1)?.trim() ?? '';
-  return /^https:\/\/github\.com\/[^\s]+$/.test(url) ? url : null;
+/**
+ * GitHub "Create a review for a pull request" 요청 본문.
+ * 작성자는 자기 PR을 승인·변경 요청할 수 없어 event는 COMMENT로 둔다.
+ * commitId가 null이면 GitHub가 PR의 최신 커밋에 붙인다.
+ */
+export function buildReviewPayload(post: ReviewPost, commitId: string | null): Record<string, unknown> {
+  return {
+    ...(commitId === null ? {} : { commit_id: commitId }),
+    event: 'COMMENT',
+    body: post.body,
+    comments: post.comments.map((comment) => ({
+      path: comment.path,
+      ...(comment.startLine === null ? {} : { start_line: comment.startLine, start_side: 'RIGHT' }),
+      line: comment.line,
+      side: 'RIGHT',
+      body: comment.body,
+    })),
+  };
 }
 
-/** 게시한 코멘트의 URL을 돌려준다. */
-export async function postComment(repo: string, number: number, body: string): Promise<string | null> {
+/** 리뷰 생성 응답의 html_url. GitHub 주소가 아니면 버린다. */
+export function parseReviewUrl(stdout: string): string | null {
+  let url: unknown;
+  try {
+    url = (JSON.parse(stdout) as Record<string, unknown>)['html_url'];
+  } catch {
+    return null;
+  }
+  return typeof url === 'string' && /^https:\/\/github\.com\/[^\s]+$/.test(url) ? url : null;
+}
+
+/** GitHub가 요청 값(코멘트 줄 위치, 커밋 등)을 받아들이지 않아 리뷰를 만들지 않았는지 판단한다. */
+export function isUnprocessableError(error: unknown): boolean {
+  return error instanceof ExecError && /\(HTTP 422\)/.test(error.result.stderr);
+}
+
+/** PR 리뷰를 게시하고 리뷰의 URL을 돌려준다. */
+export async function postReview(repo: string, number: number, post: ReviewPost, commitId: string | null): Promise<string | null> {
   validateRepo(repo);
   // 본문은 인자가 아닌 표준 입력으로 넘긴다.
-  const stdout = await runOk('gh', ['pr', 'comment', String(validatePrNumber(number)), '--repo', repo, '--body-file', '-'], {
-    input: body,
-    timeoutMs: GH_TIMEOUT_MS,
-  });
-  return parseCommentUrl(stdout);
+  const stdout = await runOk(
+    'gh',
+    ['api', '--method', 'POST', `repos/${repo}/pulls/${validatePrNumber(number)}/reviews`, '--input', '-'],
+    { input: JSON.stringify(buildReviewPayload(post, commitId)), timeoutMs: GH_TIMEOUT_MS },
+  );
+  return parseReviewUrl(stdout);
 }

@@ -3,6 +3,7 @@ import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validateRepo } from './config.ts';
+import { parseDiffLineRanges, type LineRange } from './diff.ts';
 import { run, runOk } from './exec.ts';
 import type { PullRequest } from './github.ts';
 
@@ -17,6 +18,8 @@ export interface Workspace {
   diff: string;
   diffLines: number;
   truncated: boolean;
+  /** 파일별로 diff hunk에 나오는 head 쪽 줄 범위. 코드 줄 코멘트는 이 범위 안에만 달 수 있다. */
+  diffLineRanges: Map<string, LineRange[]>;
   /** worktree 밖에 둔 읽기용 디렉터리. 전체 diff 파일이 들어 있다. */
   dataDir: string;
   fullDiffPath: string;
@@ -116,7 +119,20 @@ export async function prepareWorkspace(
   };
 
   try {
-    const diffArgs = [...GIT_BASE_ARGS, '-C', dir, 'diff', '--no-color', '--no-ext-diff', mergeBase, sha];
+    // 사용자 git 설정(diff.context, diff.noprefix 등)과 관계없이 GitHub PR diff와 같은 형식으로 만든다.
+    const diffArgs = [
+      ...GIT_BASE_ARGS,
+      '-C',
+      dir,
+      'diff',
+      '--no-color',
+      '--no-ext-diff',
+      '--unified=3',
+      '--src-prefix=a/',
+      '--dst-prefix=b/',
+      mergeBase,
+      sha,
+    ];
     const [rawDiff, nameOnly, diffStat] = await Promise.all([
       runOk('git', diffArgs, { timeoutMs: GIT_TIMEOUT_MS }),
       runOk('git', [...diffArgs, '--name-only'], { timeoutMs: GIT_TIMEOUT_MS }),
@@ -136,6 +152,7 @@ export async function prepareWorkspace(
         diff: truncated.text,
         diffLines: truncated.lines,
         truncated: truncated.truncated,
+        diffLineRanges: parseDiffLineRanges(rawDiff),
         dataDir,
         fullDiffPath,
       },

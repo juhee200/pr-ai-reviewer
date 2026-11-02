@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { isReady, nodeVersionOk, type Check } from '../src/doctor.ts';
-import { parseCommentUrl } from '../src/github.ts';
 import { mergeRepoLists, parseRepoList } from '../src/repos.ts';
 
 describe('doctor', () => {
@@ -31,13 +30,5 @@ describe('repos', () => {
     ]));
     assert.deepEqual(mergeRepoLists([a, b]).map((repo) => repo.nameWithOwner), ['org/new', 'me/old']);
     assert.deepEqual(parseRepoList('{}'), []);
-  });
-});
-
-describe('parseCommentUrl', () => {
-  it('gh 출력의 마지막 줄이 GitHub 주소일 때만 받는다', () => {
-    assert.equal(parseCommentUrl('https://github.com/o/r/pull/1#issuecomment-1\n'), 'https://github.com/o/r/pull/1#issuecomment-1');
-    assert.equal(parseCommentUrl('done'), null);
-    assert.equal(parseCommentUrl('https://evil.example.com/x'), null);
   });
 });
