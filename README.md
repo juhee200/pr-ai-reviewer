@@ -4,7 +4,74 @@
 
 macOS에서는 메뉴바 앱으로 설치·설정·상태 확인을 하고, 터미널에서는 같은 기능을 CLI로 씁니다.
 
-## 1. 동작 방식
+<img src="docs/images/pr-review.png" alt="PR에 게시된 AI 리뷰. 리뷰 본문에 심각도별 건수와 요약이 있고, 지적마다 해당 코드 줄에 코멘트가 달려 있다." width="760">
+
+📌 README의 이미지는 샘플 데이터로 만든 화면입니다. 저장소·계정 이름은 실제가 아닙니다.
+
+## 1. 빠른 시작
+
+macOS 메뉴바 앱 기준으로 설치부터 첫 리뷰까지 4단계입니다. CLI만 쓰려면 [1.2](#12-cli로-시작)를 봅니다.
+
+### 1.1 메뉴바 앱으로 시작
+
+1. 리뷰에 쓸 CLI에 로그인합니다. GitHub CLI와 리뷰 엔진(Claude Code 또는 Codex) 하나가 필요합니다.
+
+   ```bash
+   gh auth login
+   claude auth login     # Codex를 쓰면 codex login
+   ```
+
+2. 앱을 설치하고 엽니다. node와 gh는 함께 설치됩니다.
+
+   ```bash
+   brew install --cask juhee200/tap/pr-ai-reviewer
+   open "/Applications/PR AI Reviewer.app"
+   ```
+
+3. 처음 열면 나오는 설정 창을 위에서부터 채운 뒤 저장합니다.
+
+   | 순서 | 할 일 |
+   |---|---|
+   | 1. 환경 점검 | 모든 필수 항목이 초록색인지 확인. 빠진 도구는 설치 명령과 복사 버튼이 나옴 |
+   | 2. 감시할 저장소 | 내 PR을 리뷰할 저장소에 체크 |
+   | 3. 리뷰 설정 | 엔진 선택. PR에 바로 올리려면 "PR에 리뷰 코멘트 게시"를 켬. 끄면 이 PC에만 저장(dry-run) |
+   | 4. 자동 실행 | "로그인 시 자동 리뷰"를 켬 |
+
+4. 감시 중인 저장소의 내 PR에 커밋을 푸시합니다. 마지막 푸시 후 최대 2분 30초(조회 간격 60초 + 추가 푸시 대기 90초) 안에 리뷰를 시작합니다. 진행 상황과 결과는 메뉴바 아이콘에서 확인합니다.
+
+### 1.2 CLI로 시작
+
+```bash
+npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.4.0
+pr-ai-reviewer init                                      # 설정 파일 생성
+echo '{"repos":["owner/name"]}' | pr-ai-reviewer config set
+pr-ai-reviewer doctor                                    # 도구·로그인·설정 점검
+pr-ai-reviewer review owner/name 123                     # PR 하나를 리뷰해 결과만 출력 (게시하지 않음)
+pr-ai-reviewer service install --post                    # 로그인 시 자동 실행 + PR에 게시
+```
+
+설치 옵션과 명령 전체는 [5. 설치](#5-설치)와 [7. 사용법](#7-사용법)에 있습니다.
+
+## 2. 화면
+
+<table>
+  <tr>
+    <th>메뉴바</th>
+    <th>설정 창</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/menu.png" alt="메뉴바 창. 감시 상태, 리뷰 중인 PR, 대기 중인 PR, 최근 리뷰 목록과 일시정지·지금 조회 버튼이 있다." width="360"></td>
+    <td valign="top"><img src="docs/images/settings.png" alt="설정 창. 환경 점검, 감시할 저장소, 리뷰 설정, 자동 실행 순서로 항목이 있다." width="420"></td>
+  </tr>
+</table>
+
+| 화면 | 보이는 내용 |
+|---|---|
+| 메뉴바 | 감시 상태, 리뷰 중·대기 중인 PR, 최근 리뷰 5건(심각도별 건수, 게시 여부). 행 오른쪽 버튼으로 PR, 게시한 코멘트, 이 PC에 저장한 결과 파일을 엶 |
+| 설정 창 | 환경 점검, 감시할 저장소, 리뷰 엔진·모델·Draft 포함·게시 여부, 자동 실행 등록 |
+| PR 리뷰 (맨 위 이미지) | 리뷰 본문에 대상 커밋·엔진·심각도별 건수·요약. diff 안의 지적은 해당 코드 줄 코멘트로, diff 밖의 지적은 코드를 인용해 본문에 담음 |
+
+## 3. 동작 방식
 
 ```
 [개발자 PC]
@@ -31,7 +98,7 @@ PR을 IntelliJ, 웹, CLI 중 어디서 만들었는지와 관계없이 GitHub에
 - GitHub가 코멘트 위치나 커밋을 받지 않으면(HTTP 422) 모든 지적을 리뷰 본문에 인용과 함께 넣어 다시 게시합니다. 리뷰 중에 강제 푸시로 커밋이 PR에서 빠진 경우가 여기에 해당합니다.
 - dry-run 출력과 로컬 결과 파일에는 모든 지적을 코드 인용과 함께 담습니다.
 
-## 2. 요구 사항
+## 4. 요구 사항
 
 메뉴바 앱은 설정 창의 "환경 점검"에서 아래 항목을 확인합니다. Homebrew로 앱을 설치하면 node와 gh는 함께 설치됩니다.
 
@@ -43,9 +110,9 @@ PR을 IntelliJ, 웹, CLI 중 어디서 만들었는지와 관계없이 GitHub에
 | Claude Code 로그인 (엔진이 claude일 때) | `claude -p "hi"` |
 | Codex CLI 로그인 (엔진이 codex일 때) | `codex login status` |
 
-## 3. 설치
+## 5. 설치
 
-### 3.1 메뉴바 앱 (macOS 14 이상)
+### 5.1 메뉴바 앱 (macOS 14 이상)
 
 ```bash
 brew install --cask juhee200/tap/pr-ai-reviewer
@@ -72,7 +139,7 @@ brew install --cask juhee200/tap/pr-ai-reviewer
 - 개발자 인증서 없이 ad-hoc 서명한 앱입니다. cask가 설치할 때 quarantine 속성을 지워 Gatekeeper가 막지 않습니다. Release의 zip을 직접 받아 설치했다면 `xattr -dr com.apple.quarantine "/Applications/PR AI Reviewer.app"`을 실행한 뒤 엽니다.
 - npm으로 설치한 CLI로 자동 실행을 등록해 두었다면, 설정 창 ④에서 "이 앱으로 다시 등록"을 누릅니다. 그래야 앱을 업데이트할 때 감시 프로세스도 함께 바뀝니다.
 
-### 3.2 CLI
+### 5.2 CLI
 
 GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
@@ -85,7 +152,7 @@ pr-ai-reviewer init
 
 새 버전은 태그만 바꿔 같은 명령을 다시 실행하고, 삭제는 `npm uninstall -g pr-ai-reviewer`로 합니다.
 
-### 3.3 소스에서 실행·빌드
+### 5.3 소스에서 실행·빌드
 
 소스에서 직접 실행하려면 다음과 같이 합니다. Node의 TypeScript 타입 제거 기능을 써서 빌드 없이 실행됩니다.
 
@@ -101,7 +168,14 @@ node src/cli.ts --help
 
 `PR_AI_REVIEWER_CONFIG` 환경 변수로 설정 파일 경로를 바꿀 수 있습니다. 메뉴바 앱도 이 값을 CLI에 그대로 넘깁니다.
 
-## 4. 설정
+README 이미지(`docs/images/`)는 `scripts/readme-images/capture.sh`로 다시 만듭니다. Xcode, Google Chrome, gh 로그인이 필요합니다.
+
+| 이미지 | 만드는 방법 |
+|---|---|
+| `menu.png`, `settings.png` | 앱의 스냅샷 모드(`PR_AI_REVIEWER_SNAPSHOT_DIR`)에 가짜 CLI(`fake-cli.mjs`)와 샘플 상태(`sample-state.mjs`)를 연결해 그림. 설치된 앱과 겹치지 않게 번들 ID를 바꾼 임시 앱으로 실행 |
+| `pr-review.png` | `src/render.ts`로 샘플 리뷰를 만들고 GitHub 마크다운 API로 HTML을 만든 뒤 Chrome headless로 찍음 |
+
+## 6. 설정
 
 `pr-ai-reviewer init`이 `~/.config/pr-ai-reviewer/config.json`을 만듭니다. `repos`를 감시할 저장소로 바꿔 주세요. 파일을 직접 고치는 대신 `config set`으로 검증을 거쳐 바꿀 수도 있습니다.
 
@@ -130,7 +204,7 @@ pr-ai-reviewer config show
 | `cacheDir` | `~/.cache/pr-ai-reviewer` | 저장소 캐시와 worktree |
 | `stateDir` | `~/.local/state/pr-ai-reviewer` | 상태, 실행 기록(`runs.jsonl`), 리뷰 결과 파일(`reviews/`), 감시 상태(`status.json`) |
 
-## 5. 사용법
+## 7. 사용법
 
 ```bash
 pr-ai-reviewer run --plan                 # 리뷰하지 않고 판정 결과만 확인
@@ -148,7 +222,7 @@ pr-ai-reviewer ctl pause                  # 실행 중인 감시 일시정지 (r
 
 `doctor`, `repos`, `config show`, `service status`는 `--json`을 붙이면 JSON으로 출력합니다.
 
-## 6. 로그인 시 자동 실행 (macOS)
+## 8. 로그인 시 자동 실행 (macOS)
 
 ```bash
 pr-ai-reviewer service install --post   # 게시 모드로 등록 (--dry-run이면 게시하지 않음)
@@ -165,7 +239,7 @@ pr-ai-reviewer service uninstall        # 해제
 - 실행 명령 앞에 `/bin/sh` 검사를 붙여, CLI 파일이 없으면(앱이나 npm 패키지를 지운 경우) 오류 대신 정상 종료합니다. 그래서 launchd가 실패한 실행을 반복하지 않습니다. 실행 중에 CLI 파일이 2분 넘게 없으면 감시 프로세스가 자동 실행 등록을 지우고 끝납니다.
 - 처음 켜면 이미 열려 있는 내 PR 중 아직 리뷰하지 않은 커밋도 찾아 리뷰합니다. dry-run으로만 리뷰한 커밋은 게시 모드에서 다시 리뷰해 게시합니다.
 
-## 7. 안전 설계
+## 9. 안전 설계
 
 - 외부 명령은 셸을 거치지 않고 인자 배열로 실행합니다. 저장소 이름, PR 번호, 커밋 SHA, 브랜치 이름은 형식을 검증한 뒤 씁니다.
 - AI는 읽기 전용입니다.
@@ -178,7 +252,7 @@ pr-ai-reviewer service uninstall        # 해제
 - 토큰은 직접 다루지 않고 gh·git의 기존 인증을 씁니다. 로그에 환경변수를 남기지 않습니다.
 - 리뷰는 PR 작성자 PC의 AI 서비스로 코드를 보냅니다. 평소 그 CLI로 회사 코드를 다루는 범위와 같은지 회사 정책을 확인한 뒤 쓰세요.
 
-## 8. 한계
+## 10. 한계
 
 - 조회 방식이라 최대 `pollIntervalSec + debounceSec`만큼 늦게 리뷰합니다.
 - 작성자 PC가 꺼져 있으면 리뷰하지 않습니다. 켜지면 열린 PR 중 리뷰하지 않은 커밋을 리뷰합니다.
@@ -186,6 +260,6 @@ pr-ai-reviewer service uninstall        # 해제
 - GitHub는 PR diff에 나오는 줄에만 코드 줄 코멘트를 받습니다. diff 밖을 가리키는 지적은 리뷰 본문에 남기므로 그 지적에는 별도 답글 스레드가 생기지 않습니다.
 - 작성자 계정으로 게시하므로 리뷰 상태는 항상 Comment입니다. GitHub는 자기 PR의 승인·변경 요청을 막습니다.
 
-## 9. 라이선스
+## 11. 라이선스
 
 [MIT](LICENSE)
