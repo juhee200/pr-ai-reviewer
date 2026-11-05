@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // README 스크린샷용 감시 상태(status.json)와 실행 기록(runs.jsonl)을 만든다.
 // 사용법: node sample-state.mjs <stateDir> <살아 있는 프로세스 PID>
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [stateDir, pidText] = process.argv.slice(2);
@@ -10,6 +10,7 @@ if (!stateDir || !pidText) {
   process.exit(1);
 }
 
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 const now = Date.now();
 const at = (minutesAgo) => new Date(now - minutesAgo * 60_000).toISOString();
 const sha = (seed) => seed.repeat(40).slice(0, 40);
@@ -21,7 +22,7 @@ writeFileSync(savedReview, '# 샘플 리뷰\n');
 const status = {
   version: 1,
   pid: Number(pidText),
-  appVersion: '0.4.0',
+  appVersion: version,
   mode: 'post',
   engine: 'claude',
   repos: ['acme/order-api', 'acme/web-console'],

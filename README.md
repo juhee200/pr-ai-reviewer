@@ -44,7 +44,7 @@ macOS 메뉴바 앱 기준으로 설치부터 첫 리뷰까지 4단계입니다.
 ### 1.2 CLI로 시작
 
 ```bash
-npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.4.0
+npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.5.0
 pr-ai-reviewer init                                      # 설정 파일 생성
 echo '{"repos":["owner/name"]}' | pr-ai-reviewer config set
 pr-ai-reviewer doctor                                    # 도구·로그인·설정 점검
@@ -157,7 +157,7 @@ brew install --cask juhee200/tap/pr-ai-reviewer
 GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
 ```bash
-npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.4.0
+npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.5.0
 pr-ai-reviewer init
 ```
 
