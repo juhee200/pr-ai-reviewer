@@ -1,12 +1,14 @@
+<p align="center"><img src="app/Resources/Mascot.png" alt="마스코트 리뷰엉이. 보라색 부엉이 캐릭터." width="140"></p>
+
 # pr-ai-reviewer
 
 내가 올린 PR(일반·Draft)을 감지해, 이 PC에 로그인된 Claude Code 또는 Codex CLI로 리뷰하는 로컬 상주 도구입니다. CI에 외부 API 키를 두지 않고, 각자 쓰는 AI 좌석으로 리뷰를 돌립니다.
 
-macOS에서는 메뉴바 앱으로 설치·설정·상태 확인을 하고, 터미널에서는 같은 기능을 CLI로 씁니다.
+macOS에서는 메뉴바 앱으로 설치·설정·상태 확인을 하고, 터미널에서는 같은 기능을 CLI로 씁니다. 마스코트는 리뷰엉이이고, 메뉴바 아이콘으로 감시 상태를 보여 줍니다.
 
 <img src="docs/images/pr-review.png" alt="PR에 게시된 AI 리뷰. 리뷰 본문에 심각도별 건수와 요약이 있고, 지적마다 해당 코드 줄에 코멘트가 달려 있다." width="760">
 
-📌 README의 이미지는 샘플 데이터로 만든 화면입니다. 저장소·계정 이름은 실제가 아닙니다.
+📌 README의 화면 이미지는 샘플 데이터로 만들었습니다. 저장소·계정 이름은 실제가 아닙니다.
 
 ## 1. 빠른 시작
 
@@ -70,6 +72,17 @@ pr-ai-reviewer service install --post                    # 로그인 시 자동 
 | 메뉴바 | 감시 상태, 리뷰 중·대기 중인 PR, 최근 리뷰 5건(심각도별 건수, 게시 여부). 행 오른쪽 버튼으로 PR, 게시한 코멘트, 이 PC에 저장한 결과 파일을 엶 |
 | 설정 창 | 환경 점검, 감시할 저장소, 리뷰 엔진·모델·Draft 포함·게시 여부, 자동 실행 등록 |
 | PR 리뷰 (맨 위 이미지) | 리뷰 본문에 대상 커밋·엔진·심각도별 건수·요약. diff 안의 지적은 해당 코드 줄 코멘트로, diff 밖의 지적은 코드를 인용해 본문에 담음 |
+
+메뉴바 아이콘은 리뷰엉이에 상태를 겹쳐 보여 줍니다.
+
+<img src="docs/images/menubar-icons.png" alt="메뉴바 아이콘 상태 4가지. 감시 중은 리뷰엉이만, 리뷰 중은 파란 점, 일시정지는 흐린 리뷰엉이, 확인 필요는 주황 점." width="230">
+
+| 아이콘 | 상태 |
+|---|---|
+| 리뷰엉이 | 감시 중 |
+| 파란 점 | 리뷰 중 |
+| 흐리게 | 일시정지 |
+| 주황 점 | 확인 필요. 감시 프로세스가 실행 중이 아니거나, 마지막 조회에 오류가 있거나, 앱이 CLI를 찾지 못함. 메뉴바 창에 원인이 나옴 |
 
 ## 3. 동작 방식
 
@@ -172,7 +185,7 @@ README 이미지(`docs/images/`)는 `scripts/readme-images/capture.sh`로 다시
 
 | 이미지 | 만드는 방법 |
 |---|---|
-| `menu.png`, `settings.png` | 앱의 스냅샷 모드(`PR_AI_REVIEWER_SNAPSHOT_DIR`)에 가짜 CLI(`fake-cli.mjs`)와 샘플 상태(`sample-state.mjs`)를 연결해 그림. 설치된 앱과 겹치지 않게 번들 ID를 바꾼 임시 앱으로 실행 |
+| `menu.png`, `settings.png`, `menubar-icons.png` | 앱의 스냅샷 모드(`PR_AI_REVIEWER_SNAPSHOT_DIR`)에 가짜 CLI(`fake-cli.mjs`)와 샘플 상태(`sample-state.mjs`)를 연결해 그림. 설치된 앱과 겹치지 않게 번들 ID를 바꾼 임시 앱으로 실행 |
 | `pr-review.png` | `src/render.ts`로 샘플 리뷰를 만들고 GitHub 마크다운 API로 HTML을 만든 뒤 Chrome headless로 찍음 |
 
 ## 6. 설정

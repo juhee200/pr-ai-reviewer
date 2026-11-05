@@ -1,12 +1,17 @@
 // 앱 아이콘 이미지 묶음(.iconset)을 그린다. scripts/build-app.sh가 iconutil로 .icns를 만든다.
-// 사용법: swift app/make-icon.swift <출력 폴더>
+// 마스코트 리뷰엉이(app/Resources/Mascot.png)를 밝은 보라색 타일 위에 올린다.
+// 사용법: swift app/make-icon.swift <마스코트 PNG> <출력 폴더>
 import AppKit
 
-guard CommandLine.arguments.count == 2 else {
-    FileHandle.standardError.write(Data("사용법: swift app/make-icon.swift <출력 폴더>\n".utf8))
+guard CommandLine.arguments.count == 3 else {
+    FileHandle.standardError.write(Data("사용법: swift app/make-icon.swift <마스코트 PNG> <출력 폴더>\n".utf8))
     exit(1)
 }
-let output = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+guard let mascot = NSImage(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])) else {
+    FileHandle.standardError.write(Data("마스코트 이미지를 읽지 못했습니다: \(CommandLine.arguments[1])\n".utf8))
+    exit(1)
+}
+let output = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
 try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
 
 func drawIcon(pixels: Int) -> Data? {
@@ -16,26 +21,31 @@ func drawIcon(pixels: Int) -> Data? {
     ) else { return nil }
     NSGraphicsContext.saveGraphicsState()
     defer { NSGraphicsContext.restoreGraphicsState() }
-    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+    let context = NSGraphicsContext(bitmapImageRep: bitmap)
+    context?.imageInterpolation = .high
+    NSGraphicsContext.current = context
 
     // macOS 아이콘 격자: 1024px 기준 가운데 824px 둥근 사각형
     let size = CGFloat(pixels)
     let inset = size * 100 / 1024
     let tile = NSRect(x: inset, y: inset, width: size - inset * 2, height: size - inset * 2)
     let shape = NSBezierPath(roundedRect: tile, xRadius: tile.width * 0.225, yRadius: tile.width * 0.225)
-    let top = NSColor(srgbRed: 0.24, green: 0.52, blue: 0.98, alpha: 1)
-    let bottom = NSColor(srgbRed: 0.36, green: 0.27, blue: 0.86, alpha: 1)
+    // 보라색 리뷰엉이가 묻히지 않게 배경은 아주 옅은 보라색에서 조금 진한 보라색으로 내려간다.
+    let top = NSColor(srgbRed: 0.95, green: 0.93, blue: 1.00, alpha: 1)
+    let bottom = NSColor(srgbRed: 0.84, green: 0.80, blue: 0.99, alpha: 1)
     NSGradient(starting: top, ending: bottom)?.draw(in: shape, angle: -90)
 
-    // 말풍선은 흰색, 안의 글줄은 배경색으로 칠해 리뷰 코멘트처럼 보이게 한다.
-    let lines = NSColor(srgbRed: 0.30, green: 0.40, blue: 0.92, alpha: 1)
-    let configuration = NSImage.SymbolConfiguration(pointSize: tile.width * 0.46, weight: .semibold)
-        .applying(NSImage.SymbolConfiguration(paletteColors: [lines, .white]))
-    if let symbol = NSImage(systemSymbolName: "text.bubble.fill", accessibilityDescription: nil)?
-        .withSymbolConfiguration(configuration) {
-        let origin = NSPoint(x: tile.midX - symbol.size.width / 2, y: tile.midY - symbol.size.height / 2)
-        symbol.draw(at: origin, from: .zero, operation: .sourceOver, fraction: 1)
-    }
+    // 마스코트는 타일 너비의 76%로, 발 아래 그림자 자리를 남기려고 살짝 위에 둔다.
+    let side = tile.width * 0.76
+    let owlRect = NSRect(x: tile.midX - side / 2, y: tile.midY - side / 2 + tile.height * 0.02, width: side, height: side)
+    NSGraphicsContext.saveGraphicsState()
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor(srgbRed: 0.33, green: 0.24, blue: 0.70, alpha: 0.28)
+    shadow.shadowOffset = NSSize(width: 0, height: -size * 0.012)
+    shadow.shadowBlurRadius = size * 0.03
+    shadow.set()
+    mascot.draw(in: owlRect, from: .zero, operation: .sourceOver, fraction: 1)
+    NSGraphicsContext.restoreGraphicsState()
     return bitmap.representation(using: .png, properties: [:])
 }
 

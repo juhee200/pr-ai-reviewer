@@ -23,6 +23,9 @@ enum Snapshot {
         await render(settings, size: NSSize(width: 620, height: 2100), to: directory.appendingPathComponent("settings.png"))
         let menu = NSHostingView(rootView: MenuView(model: model).background(Color(nsColor: .windowBackgroundColor)))
         await render(menu, size: menu.fittingSize, to: directory.appendingPathComponent("menu.png"))
+        // 메뉴바 자체는 화면 기록 권한 없이 찍을 수 없어, 상태별 메뉴바 아이콘을 따로 그린다.
+        let icons = NSHostingView(rootView: MenuBarIconPreview().padding(14).background(Color(nsColor: .windowBackgroundColor)))
+        await render(icons, size: icons.fittingSize, to: directory.appendingPathComponent("menubar-icons.png"))
     }
 
     private static func render(_ view: NSView, size: NSSize, to url: URL) async {
@@ -33,9 +36,32 @@ enum Snapshot {
         write(view, to: url)
     }
 
+    fileprivate static func label(for state: AppModel.MenuBarState) -> String {
+        switch state {
+        case .watching: "감시 중"
+        case .reviewing: "리뷰 중"
+        case .paused: "일시정지"
+        case .attention: "확인 필요"
+        }
+    }
+
     private static func write(_ view: NSView, to url: URL) {
         guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: bitmap)
         try? bitmap.representation(using: .png, properties: [:])?.write(to: url)
+    }
+}
+
+/// 메뉴바 아이콘의 상태별 모양. 실제 메뉴바와 같은 18pt 크기로 그린다.
+private struct MenuBarIconPreview: View {
+    var body: some View {
+        HStack(spacing: 22) {
+            ForEach(AppModel.MenuBarState.allCases, id: \.self) { state in
+                VStack(spacing: 6) {
+                    Image(nsImage: MenuBarIcon.image(for: state))
+                    Text(Snapshot.label(for: state)).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 }

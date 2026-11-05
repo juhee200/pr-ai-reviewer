@@ -24,9 +24,12 @@ sed "s/__VERSION__/$VERSION/g" app/Info.plist > "$APP/Contents/Info.plist"
 cp -R dist "$APP/Contents/Resources/cli/dist"
 cp package.json "$APP/Contents/Resources/cli/package.json"
 
-# 아이콘은 저장소에 이미지 파일을 두지 않고 빌드할 때 그린다.
+# 메뉴바 아이콘(마스코트 리뷰엉이). @2x는 Retina 화면에서 쓴다.
+cp app/Resources/MenuBarOwl.png "app/Resources/MenuBarOwl@2x.png" "$APP/Contents/Resources/"
+
+# 앱 아이콘은 마스코트 이미지를 타일 위에 올려 빌드할 때 그린다.
 rm -rf "$BUILD_DIR/AppIcon.iconset"
-swift app/make-icon.swift "$BUILD_DIR/AppIcon.iconset"
+swift app/make-icon.swift app/Resources/Mascot.png "$BUILD_DIR/AppIcon.iconset"
 iconutil -c icns "$BUILD_DIR/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
 
 # 개발자 인증서 없이 배포하므로 ad-hoc 서명한다. Homebrew cask가 설치할 때 quarantine 속성을 지운다.

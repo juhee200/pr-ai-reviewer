@@ -10,7 +10,7 @@ struct PRAIReviewerApp: App {
         MenuBarExtra {
             MenuView(model: model)
         } label: {
-            Image(systemName: model.menuBarSymbol)
+            Image(nsImage: MenuBarIcon.image(for: model.menuBarState))
         }
         .menuBarExtraStyle(.window)
     }

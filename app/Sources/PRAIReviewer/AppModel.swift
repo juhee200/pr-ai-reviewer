@@ -51,12 +51,17 @@ final class AppModel {
         return toolsReady && doctor.check(config.engine)?.ok == true
     }
 
-    var menuBarSymbol: String {
-        guard setupError == nil, daemonRunning, let status else { return "exclamationmark.bubble" }
+    /// 메뉴바 아이콘에 나타내는 상태. CLI를 못 찾았거나, 감시 프로세스가 멈췄거나, 마지막 조회에 오류가 있으면 attention이다.
+    enum MenuBarState: CaseIterable {
+        case watching, reviewing, paused, attention
+    }
+
+    var menuBarState: MenuBarState {
+        guard setupError == nil, daemonRunning, let status else { return .attention }
         switch status.phase {
-        case "reviewing": return "ellipsis.bubble"
-        case "paused": return "pause.circle"
-        default: return status.lastError == nil ? "text.bubble" : "exclamationmark.bubble"
+        case "reviewing": return .reviewing
+        case "paused": return .paused
+        default: return status.lastError == nil ? .watching : .attention
         }
     }
 
