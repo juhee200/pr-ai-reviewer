@@ -3,12 +3,13 @@ import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { APP_SLUG, LEGACY_SLUG } from './config.ts';
 import { ExecError, run } from './exec.ts';
 
 // macOS 로그인 시 자동 실행(launchd LaunchAgent). 사용자 계정 범위라 관리자 권한이 필요 없다.
-export const SERVICE_LABEL = 'io.github.juhee200.pr-ai-reviewer.agent';
-// v0.2.0까지 쓰던 이름. 등록·해제할 때 함께 정리한다.
-const LEGACY_LABELS = ['com.github.juhee200.pr-ai-reviewer'];
+export const SERVICE_LABEL = `io.github.juhee200.${APP_SLUG}.agent`;
+// 예전 이름. 등록·해제할 때 함께 정리한다. v0.2.0까지는 com.github…, v0.5.0까지는 pr-ai-reviewer를 썼다.
+const LEGACY_LABELS = ['com.github.juhee200.pr-ai-reviewer', `io.github.juhee200.${LEGACY_SLUG}.agent`];
 
 function plistPathFor(label: string): string {
   return join(homedir(), 'Library', 'LaunchAgents', `${label}.plist`);
@@ -18,15 +19,20 @@ export function plistPath(): string {
   return plistPathFor(SERVICE_LABEL);
 }
 
-async function removeLegacyAgents(): Promise<void> {
+/** 예전 이름으로 등록된 자동 실행을 내리고 plist를 지운다. 실행 중인 예전 감시 프로세스는 SIGTERM을 받아 정리 후 끝난다. */
+export async function removeLegacyAgents(): Promise<void> {
   for (const label of LEGACY_LABELS) {
     await run('launchctl', ['bootout', `${domain()}/${label}`]);
     await rm(plistPathFor(label), { force: true });
   }
 }
 
+export function logDir(slug = APP_SLUG): string {
+  return join(homedir(), 'Library', 'Logs', slug);
+}
+
 export function logPath(): string {
-  return join(homedir(), 'Library', 'Logs', 'pr-ai-reviewer', 'agent.log');
+  return join(logDir(), 'agent.log');
 }
 
 export interface ServiceSpec {
@@ -185,7 +191,8 @@ export async function installService(runArgs: string[], log: (message: string) =
 }
 
 /**
- * 등록돼 있으면 새 코드로 다시 시작한다. Homebrew로 앱을 업그레이드한 뒤 cask가 부른다.
+ * 등록돼 있으면 새 코드로 다시 시작한다. 도구를 새로 설치한 뒤 직접 다시 시작할 때 쓴다.
+ * 앱 업그레이드 뒤에는 감시 프로세스가 버전이 바뀐 것을 보고 스스로 다시 시작한다(cli.ts commandRun).
  * 앱을 지울 때 감시 프로세스가 plist를 지웠다면 launchd에 작업만 남아 있으므로 다시 시작하지 않는다.
  */
 export async function restartService(log: (message: string) => void): Promise<void> {

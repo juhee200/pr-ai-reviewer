@@ -36,9 +36,11 @@ describe('status·control', () => {
   });
 
   it('감시 프로세스 명령줄만 신호 대상으로 본다', () => {
+    assert.equal(looksLikeDaemon('/opt/homebrew/bin/node /x/review-owl/dist/cli.js run --post --config /c.json'), true);
+    // v0.5.0까지의 경로로 실행 중인 감시 프로세스도 알아본다.
     assert.equal(looksLikeDaemon('/opt/homebrew/bin/node /x/pr-ai-reviewer/dist/cli.js run --post --config /c.json'), true);
     assert.equal(looksLikeDaemon('node src/cli.ts run --once'), true);
     assert.equal(looksLikeDaemon('/usr/bin/vim notes.txt'), false);
-    assert.equal(looksLikeDaemon('/x/pr-ai-reviewer/dist/cli.js doctor'), false);
+    assert.equal(looksLikeDaemon('/x/review-owl/dist/cli.js doctor'), false);
   });
 });

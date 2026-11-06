@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "PRAIReviewer",
+    name: "ReviewOwl",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "PRAIReviewer",
-            path: "Sources/PRAIReviewer"
+            name: "ReviewOwl",
+            path: "Sources/ReviewOwl"
         ),
     ]
 )

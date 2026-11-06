@@ -26,7 +26,7 @@ struct MenuView: View {
 
     private var header: some View {
         HStack {
-            Text("PR AI Reviewer").font(.headline)
+            Text("리뷰엉이").font(.headline)
             Spacer()
             Button {
                 model.openSettings()

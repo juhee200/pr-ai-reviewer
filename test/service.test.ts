@@ -14,7 +14,7 @@ describe('parseProgramArguments', () => {
   it('buildPlist로 만든 실행 인자를 이스케이프 전 값으로 되돌린다', () => {
     const spec = {
       nodePath: '/opt/homebrew/bin/node',
-      scriptPath: '/Applications/PR AI Reviewer.app/Contents/Resources/cli/dist/cli.js',
+      scriptPath: '/Applications/Review Owl.app/Contents/Resources/cli/dist/cli.js',
       args: ['run', '--config', `/Users/a&b/<c>"d'.json`],
       pathEnv: '/usr/bin',
       logFile: '/tmp/agent.log',
@@ -35,18 +35,19 @@ describe('service plist', () => {
   it('실행 인자를 배열 그대로 넣고 문자열을 XML 이스케이프한다', () => {
     const plist = buildPlist({
       nodePath: '/opt/homebrew/bin/node',
-      scriptPath: '/lib/node_modules/pr-ai-reviewer/dist/cli.js',
+      scriptPath: '/lib/node_modules/review-owl/dist/cli.js',
       args: ['run', '--post', '--config', '/Users/a&b/<cfg>.json'],
       pathEnv: '/Users/u/.local/bin:/usr/bin',
-      logFile: '/Users/u/Library/Logs/pr-ai-reviewer/agent.log',
+      logFile: '/Users/u/Library/Logs/review-owl/agent.log',
     });
     assert.ok(plist.includes(`<string>${SERVICE_LABEL}</string>`));
+    assert.equal(SERVICE_LABEL, 'io.github.juhee200.review-owl.agent');
     const args = [...plist.matchAll(/^ {4}<string>(.*)<\/string>$/gm)].map((match) => match[1]);
     // 셸 검사 문자열에는 경로가 들어가지 않고, 경로는 뒤따르는 인자로만 넘긴다.
     assert.deepEqual(args.slice(0, 3), ['/bin/sh', '-c', '[ -f &quot;$1&quot; ] || exit 0; exec &quot;$0&quot; &quot;$@&quot;']);
     assert.deepEqual(args.slice(3, 8), [
       '/opt/homebrew/bin/node',
-      '/lib/node_modules/pr-ai-reviewer/dist/cli.js',
+      '/lib/node_modules/review-owl/dist/cli.js',
       'run',
       '--post',
       '--config',

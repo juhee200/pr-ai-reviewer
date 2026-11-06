@@ -18,7 +18,7 @@ final class SettingsWindowController {
         let controller = NSHostingController(rootView: SettingsView(model: model))
         controller.sizingOptions = [.minSize]
         let window = NSWindow(contentViewController: controller)
-        window.title = "PR AI Reviewer 설정"
+        window.title = "리뷰엉이 설정"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 620, height: 780))
         window.isReleasedWhenClosed = false

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// README 스크린샷용 가짜 CLI. 앱이 PR_AI_REVIEWER_CLI로 이 파일을 실행하면 실제 gh·claude 대신 샘플 데이터를 돌려준다.
+// README 스크린샷용 가짜 CLI. 앱이 REVIEW_OWL_CLI로 이 파일을 실행하면 실제 gh·claude 대신 샘플 데이터를 돌려준다.
 // 실제 계정, 저장소, 경로가 이미지에 찍히지 않게 하려는 용도다.
 // 필요한 환경 변수: SAMPLE_STATE_DIR(status.json·runs.jsonl을 둔 폴더), SAMPLE_DAEMON_PID(살아 있는 프로세스 PID)
 import { realpathSync } from 'node:fs';
@@ -15,7 +15,7 @@ const repos = ['acme/order-api', 'acme/web-console'];
 
 const responses = {
   'config show': {
-    path: '~/.config/pr-ai-reviewer/config.json',
+    path: '~/.config/review-owl/config.json',
     exists: true,
     config: {
       repos,
@@ -35,8 +35,8 @@ const responses = {
     lastExitCode: null,
     // 앱이 실행한 CLI와 같은 경로여야 "앱 밖의 CLI로 등록" 경고가 뜨지 않는다.
     scriptPath: realpathSync(process.argv[1]),
-    plistPath: '~/Library/LaunchAgents/io.github.juhee200.pr-ai-reviewer.agent.plist',
-    logPath: '~/Library/Logs/pr-ai-reviewer/agent.log',
+    plistPath: '~/Library/LaunchAgents/io.github.juhee200.review-owl.agent.plist',
+    logPath: '~/Library/Logs/review-owl/agent.log',
   },
   doctor: {
     ready: true,

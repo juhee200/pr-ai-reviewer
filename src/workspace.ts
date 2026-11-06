@@ -110,7 +110,7 @@ export async function prepareWorkspace(
   );
   await runOk('git', ['-C', mirror, 'worktree', 'add', '--detach', '--quiet', dir, sha], { timeoutMs: GIT_TIMEOUT_MS });
 
-  const dataDir = await mkdtemp(join(tmpdir(), 'pr-ai-reviewer-data-'));
+  const dataDir = await mkdtemp(join(tmpdir(), 'review-owl-data-'));
   const cleanup = async (): Promise<void> => {
     await run('git', ['-C', mirror, 'worktree', 'remove', '--force', dir]);
     await rm(dir, { recursive: true, force: true });

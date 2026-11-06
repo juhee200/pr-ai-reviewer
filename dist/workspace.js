@@ -67,7 +67,7 @@ export async function prepareWorkspace(cacheDir, pr, sha, maxDiffLines) {
     await mkdir(worktreeRoot, { recursive: true });
     const dir = join(worktreeRoot, `${repoDirName(pr.repo)}__${pr.number}__${sha.slice(0, 7)}__${randomBytes(3).toString('hex')}`);
     await runOk('git', ['-C', mirror, 'worktree', 'add', '--detach', '--quiet', dir, sha], { timeoutMs: GIT_TIMEOUT_MS });
-    const dataDir = await mkdtemp(join(tmpdir(), 'pr-ai-reviewer-data-'));
+    const dataDir = await mkdtemp(join(tmpdir(), 'review-owl-data-'));
     const cleanup = async () => {
         await run('git', ['-C', mirror, 'worktree', 'remove', '--force', dir]);
         await rm(dir, { recursive: true, force: true });

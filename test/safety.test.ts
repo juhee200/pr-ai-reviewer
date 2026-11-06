@@ -74,7 +74,7 @@ describe('truncateLines', () => {
 
 describe('state', () => {
   it('저장 후 다시 읽을 수 있고 임시 파일을 남기지 않는다', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'pr-ai-reviewer-test-'));
+    const dir = await mkdtemp(join(tmpdir(), 'review-owl-test-'));
     try {
       const path = join(dir, 'nested', 'state.json');
       assert.deepEqual(await loadState(path), emptyState());

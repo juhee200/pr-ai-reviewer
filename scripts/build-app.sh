@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 메뉴바 앱 번들(PR AI Reviewer.app)과 배포용 zip을 build/에 만든다.
+# 메뉴바 앱 번들(Review Owl.app, 화면 이름 리뷰엉이)과 배포용 zip을 build/에 만든다.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="PR AI Reviewer"
+APP_NAME="Review Owl"
 BUILD_DIR="$ROOT/build"
 APP="$BUILD_DIR/$APP_NAME.app"
 VERSION="$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).version)' "$ROOT/package.json")"
@@ -18,7 +18,7 @@ BIN_DIR="$(swift build "${SWIFT_FLAGS[@]}" --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/cli"
-cp "$BIN_DIR/PRAIReviewer" "$APP/Contents/MacOS/PRAIReviewer"
+cp "$BIN_DIR/ReviewOwl" "$APP/Contents/MacOS/ReviewOwl"
 sed "s/__VERSION__/$VERSION/g" app/Info.plist > "$APP/Contents/Info.plist"
 # CLI는 dist와 package.json만 넣는다. package.json의 "type": "module"이 있어야 node가 ESM으로 읽는다.
 cp -R dist "$APP/Contents/Resources/cli/dist"
@@ -36,7 +36,7 @@ iconutil -c icns "$BUILD_DIR/AppIcon.iconset" -o "$APP/Contents/Resources/AppIco
 codesign --force --sign - --timestamp=none "$APP"
 codesign --verify --strict "$APP"
 
-ZIP="$BUILD_DIR/pr-ai-reviewer-$VERSION.zip"
+ZIP="$BUILD_DIR/review-owl-$VERSION.zip"
 rm -f "$ZIP"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 echo "앱: $APP"

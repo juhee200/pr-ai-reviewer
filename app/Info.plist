@@ -5,17 +5,17 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>ko</string>
   <key>CFBundleDisplayName</key>
-  <string>PR AI Reviewer</string>
+  <string>리뷰엉이</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundleExecutable</key>
-  <string>PRAIReviewer</string>
+  <string>ReviewOwl</string>
   <key>CFBundleIdentifier</key>
-  <string>io.github.juhee200.pr-ai-reviewer</string>
+  <string>io.github.juhee200.review-owl</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>PR AI Reviewer</string>
+  <string>Review Owl</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

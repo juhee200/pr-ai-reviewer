@@ -1,8 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-/** ps 명령줄이 pr-ai-reviewer 감시 프로세스(run)인지 판단한다. */
+/** ps 명령줄이 리뷰엉이 감시 프로세스(run)인지 판단한다. v0.5.0까지의 pr-ai-reviewer 경로도 인정한다. */
 export function looksLikeDaemon(commandLine) {
-    return /pr-ai-reviewer|cli\.(?:js|ts)/.test(commandLine) && /\brun\b/.test(commandLine);
+    return /review-owl|pr-ai-reviewer|cli\.(?:js|ts)/.test(commandLine) && /\brun\b/.test(commandLine);
 }
 export function statusPath(stateDir) {
     return join(stateDir, 'status.json');

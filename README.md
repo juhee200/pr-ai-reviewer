@@ -1,10 +1,12 @@
 <p align="center"><img src="app/Resources/Mascot.png" alt="마스코트 리뷰엉이. 보라색 부엉이 캐릭터." width="140"></p>
 
-# pr-ai-reviewer
+# 리뷰엉이 (review-owl)
 
 내가 올린 PR(일반·Draft)을 감지해, 이 PC에 로그인된 Claude Code 또는 Codex CLI로 리뷰하는 로컬 상주 도구입니다. CI에 외부 API 키를 두지 않고, 각자 쓰는 AI 좌석으로 리뷰를 돌립니다.
 
-macOS에서는 메뉴바 앱으로 설치·설정·상태 확인을 하고, 터미널에서는 같은 기능을 CLI로 씁니다. 마스코트는 리뷰엉이이고, 메뉴바 아이콘으로 감시 상태를 보여 줍니다.
+macOS에서는 메뉴바 앱으로 설치·설정·상태 확인을 하고, 터미널에서는 같은 기능을 CLI로 씁니다. 메뉴바 아이콘은 마스코트 리뷰엉이로 감시 상태를 보여 줍니다.
+
+v0.5.0까지의 이름은 pr-ai-reviewer입니다. 쓰던 분은 [5.4](#54-v050-이하pr-ai-reviewer에서-옮기기)를 따라 옮겨 주세요.
 
 <img src="docs/images/pr-review.png" alt="PR에 게시된 AI 리뷰. 리뷰 본문에 심각도별 건수와 요약이 있고, 지적마다 해당 코드 줄에 코멘트가 달려 있다." width="760">
 
@@ -26,8 +28,8 @@ macOS 메뉴바 앱 기준으로 설치부터 첫 리뷰까지 4단계입니다.
 2. 앱을 설치하고 엽니다. node와 gh는 함께 설치됩니다.
 
    ```bash
-   brew install --cask juhee200/tap/pr-ai-reviewer
-   open "/Applications/PR AI Reviewer.app"
+   brew install --cask juhee200/tap/review-owl
+   open "/Applications/Review Owl.app"
    ```
 
 3. 처음 열면 나오는 설정 창을 위에서부터 채운 뒤 저장합니다.
@@ -44,12 +46,12 @@ macOS 메뉴바 앱 기준으로 설치부터 첫 리뷰까지 4단계입니다.
 ### 1.2 CLI로 시작
 
 ```bash
-npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.5.0
-pr-ai-reviewer init                                      # 설정 파일 생성
-echo '{"repos":["owner/name"]}' | pr-ai-reviewer config set
-pr-ai-reviewer doctor                                    # 도구·로그인·설정 점검
-pr-ai-reviewer review owner/name 123                     # PR 하나를 리뷰해 결과만 출력 (게시하지 않음)
-pr-ai-reviewer service install --post                    # 로그인 시 자동 실행 + PR에 게시
+npm install -g --install-links git+https://github.com/juhee200/review-owl.git#v0.6.0
+review-owl init                                      # 설정 파일 생성
+echo '{"repos":["owner/name"]}' | review-owl config set
+review-owl doctor                                    # 도구·로그인·설정 점검
+review-owl review owner/name 123                     # PR 하나를 리뷰해 결과만 출력 (게시하지 않음)
+review-owl service install --post                    # 로그인 시 자동 실행 + PR에 게시
 ```
 
 설치 옵션과 명령 전체는 [5. 설치](#5-설치)와 [7. 사용법](#7-사용법)에 있습니다.
@@ -128,7 +130,7 @@ PR을 IntelliJ, 웹, CLI 중 어디서 만들었는지와 관계없이 GitHub에
 ### 5.1 메뉴바 앱 (macOS 14 이상)
 
 ```bash
-brew install --cask juhee200/tap/pr-ai-reviewer
+brew install --cask juhee200/tap/review-owl
 ```
 
 1. 앱을 처음 열면 설정 창이 열립니다. 위에서부터 채웁니다.
@@ -145,11 +147,11 @@ brew install --cask juhee200/tap/pr-ai-reviewer
 
 | 작업 | 명령 | 동작 |
 |---|---|---|
-| 업데이트 | `brew upgrade --cask pr-ai-reviewer` | 앱을 바꾼 뒤 감시 프로세스를 새 버전으로 다시 시작 |
-| 삭제 | `brew uninstall --cask pr-ai-reviewer` | 감시 프로세스가 앱이 2분 넘게 없는 것을 확인하면 자동 실행 등록을 지우고 종료 (시험에서 약 2분 30초) |
-| 설정·기록까지 삭제 | `brew uninstall --zap --cask pr-ai-reviewer` | 자동 실행 등록과 설정·상태·캐시·로그 폴더 삭제 |
+| 업데이트 | `brew upgrade --cask review-owl` | 앱을 바꿈. 감시 프로세스는 진행 중인 리뷰를 끝낸 뒤 다음 조회 때(기본 60초 간격) 새 버전을 확인하고 새 버전으로 다시 시작 |
+| 삭제 | `brew uninstall --cask review-owl` | 감시 프로세스가 앱이 2분 넘게 없는 것을 확인하면 자동 실행 등록을 지우고 종료 (시험에서 약 2분 30초) |
+| 설정·기록까지 삭제 | `brew uninstall --zap --cask review-owl` | 자동 실행 등록과 설정·상태·캐시·로그 폴더 삭제 |
 
-- 개발자 인증서 없이 ad-hoc 서명한 앱입니다. cask가 설치할 때 quarantine 속성을 지워 Gatekeeper가 막지 않습니다. Release의 zip을 직접 받아 설치했다면 `xattr -dr com.apple.quarantine "/Applications/PR AI Reviewer.app"`을 실행한 뒤 엽니다.
+- 개발자 인증서 없이 ad-hoc 서명한 앱입니다. cask가 설치할 때 quarantine 속성을 지워 Gatekeeper가 막지 않습니다. Release의 zip을 직접 받아 설치했다면 `xattr -dr com.apple.quarantine "/Applications/Review Owl.app"`을 실행한 뒤 엽니다.
 - npm으로 설치한 CLI로 자동 실행을 등록해 두었다면, 설정 창 ④에서 "이 앱으로 다시 등록"을 누릅니다. 그래야 앱을 업데이트할 때 감시 프로세스도 함께 바뀝니다.
 
 ### 5.2 CLI
@@ -157,45 +159,67 @@ brew install --cask juhee200/tap/pr-ai-reviewer
 GitHub 저장소에서 바로 설치합니다. 빌드된 `dist`가 저장소에 들어 있어 설치할 때 빌드하지 않습니다.
 
 ```bash
-npm install -g --install-links git+https://github.com/juhee200/pr-ai-reviewer.git#v0.5.0
-pr-ai-reviewer init
+npm install -g --install-links git+https://github.com/juhee200/review-owl.git#v0.6.0
+review-owl init
 ```
 
 `--install-links`를 빼면 npm(11.17에서 확인)이 패키지를 복사하지 않고 임시 폴더로 링크만 걸어, 설치 직후 명령을 찾지 못합니다.
 
-새 버전은 태그만 바꿔 같은 명령을 다시 실행하고, 삭제는 `npm uninstall -g pr-ai-reviewer`로 합니다.
+새 버전은 태그만 바꿔 같은 명령을 다시 실행하고, 삭제는 `npm uninstall -g review-owl`로 합니다.
 
 ### 5.3 소스에서 실행·빌드
 
 소스에서 직접 실행하려면 다음과 같이 합니다. Node의 TypeScript 타입 제거 기능을 써서 빌드 없이 실행됩니다.
 
 ```bash
-git clone https://github.com/juhee200/pr-ai-reviewer.git
-cd pr-ai-reviewer && npm install
+git clone https://github.com/juhee200/review-owl.git
+cd review-owl && npm install
 node src/cli.ts --help
 ```
 
 릴리스할 때는 `npm run build`로 `dist`를 다시 만든 뒤 함께 커밋하고 태그를 붙입니다.
 
-메뉴바 앱은 Xcode 16 이상(Swift 6)에서 `scripts/build-app.sh`로 만듭니다. `build/PR AI Reviewer.app`과 Release에 올릴 zip이 생깁니다. 앱 소스는 `app/`에 있고, 앱 번들 안에 `dist`를 넣어 시스템 node로 실행합니다.
+메뉴바 앱은 Xcode 16 이상(Swift 6)에서 `scripts/build-app.sh`로 만듭니다. `build/Review Owl.app`과 Release에 올릴 zip이 생깁니다. 앱 소스는 `app/`에 있고, 앱 번들 안에 `dist`를 넣어 시스템 node로 실행합니다.
 
-`PR_AI_REVIEWER_CONFIG` 환경 변수로 설정 파일 경로를 바꿀 수 있습니다. 메뉴바 앱도 이 값을 CLI에 그대로 넘깁니다.
+`REVIEW_OWL_CONFIG` 환경 변수로 설정 파일 경로를 바꿀 수 있습니다. 메뉴바 앱도 이 값을 CLI에 그대로 넘깁니다. v0.5.0까지 쓰던 `PR_AI_REVIEWER_CONFIG`도 읽습니다.
 
 README 이미지(`docs/images/`)는 `scripts/readme-images/capture.sh`로 다시 만듭니다. Xcode, Google Chrome, gh 로그인이 필요합니다.
 
 | 이미지 | 만드는 방법 |
 |---|---|
-| `menu.png`, `settings.png`, `menubar-icons.png` | 앱의 스냅샷 모드(`PR_AI_REVIEWER_SNAPSHOT_DIR`)에 가짜 CLI(`fake-cli.mjs`)와 샘플 상태(`sample-state.mjs`)를 연결해 그림. 설치된 앱과 겹치지 않게 번들 ID를 바꾼 임시 앱으로 실행 |
+| `menu.png`, `settings.png`, `menubar-icons.png` | 앱의 스냅샷 모드(`REVIEW_OWL_SNAPSHOT_DIR`)에 가짜 CLI(`fake-cli.mjs`)와 샘플 상태(`sample-state.mjs`)를 연결해 그림. 설치된 앱과 겹치지 않게 번들 ID를 바꾼 임시 앱으로 실행 |
 | `pr-review.png` | `src/render.ts`로 샘플 리뷰를 만들고 GitHub 마크다운 API로 HTML을 만든 뒤 Chrome headless로 찍음 |
+
+### 5.4 v0.5.0 이하(pr-ai-reviewer)에서 옮기기
+
+v0.6.0에서 이름을 리뷰엉이(review-owl)로 바꿨습니다. 앱, 명령, cask, 폴더 이름이 바뀌어 새로 설치해야 합니다. 설정과 리뷰 기록은 그대로 옮겨집니다.
+
+```bash
+brew uninstall --cask pr-ai-reviewer          # npm으로 설치했다면 npm uninstall -g pr-ai-reviewer
+brew install --cask juhee200/tap/review-owl   # npm이면 5.2의 설치 명령
+open "/Applications/Review Owl.app"
+```
+
+1. 새 앱이나 CLI를 처음 실행하면 옛 자동 실행을 내리고, 옛 폴더를 새 이름으로 옮깁니다. 새 폴더가 이미 있으면 옮기지 않습니다.
+
+   | 옛 폴더 | 새 폴더 |
+   |---|---|
+   | `~/.config/pr-ai-reviewer` | `~/.config/review-owl` |
+   | `~/.local/state/pr-ai-reviewer` | `~/.local/state/review-owl` |
+   | `~/.cache/pr-ai-reviewer` | `~/.cache/review-owl` |
+   | `~/Library/Logs/pr-ai-reviewer` | `~/Library/Logs/review-owl` |
+
+2. 설정 창 4번에서 "로그인 시 자동 리뷰"를 다시 켭니다. CLI만 쓰면 `review-owl service install --post`를 실행합니다.
+3. PR 코멘트의 숨은 표식은 바꾸지 않았습니다. 그래서 이미 리뷰한 커밋은 다시 리뷰하지 않습니다.
 
 ## 6. 설정
 
-`pr-ai-reviewer init`이 `~/.config/pr-ai-reviewer/config.json`을 만듭니다. `repos`를 감시할 저장소로 바꿔 주세요. 파일을 직접 고치는 대신 `config set`으로 검증을 거쳐 바꿀 수도 있습니다.
+`review-owl init`이 `~/.config/review-owl/config.json`을 만듭니다. `repos`를 감시할 저장소로 바꿔 주세요. 파일을 직접 고치는 대신 `config set`으로 검증을 거쳐 바꿀 수도 있습니다.
 
 ```bash
-pr-ai-reviewer repos                                    # 선택할 수 있는 저장소 목록 ([x]는 설정에 있는 저장소)
-echo '{"repos":["owner/name"]}' | pr-ai-reviewer config set
-pr-ai-reviewer config show
+review-owl repos                                    # 선택할 수 있는 저장소 목록 ([x]는 설정에 있는 저장소)
+echo '{"repos":["owner/name"]}' | review-owl config set
+review-owl config show
 ```
 
 감시 중에 설정 파일을 바꾸면 다음 조회부터 적용합니다. 진행 중인 리뷰는 시작할 때의 설정으로 끝냅니다. `stateDir`은 재시작해야 적용됩니다.
@@ -214,21 +238,21 @@ pr-ai-reviewer config show
 | `dryRun` | true | true면 PR에 게시하지 않음. `run`·`review`의 `--post`로 덮어씀 |
 | `maxFailures` | 3 | 같은 커밋에서 이 횟수만큼 실패하면 새 커밋까지 건너뜀 |
 | `claudeSettingSources` | `project` | Claude `--setting-sources`. 개인 hook·설정이 리뷰 실행에 끼지 않게 함 |
-| `cacheDir` | `~/.cache/pr-ai-reviewer` | 저장소 캐시와 worktree |
-| `stateDir` | `~/.local/state/pr-ai-reviewer` | 상태, 실행 기록(`runs.jsonl`), 리뷰 결과 파일(`reviews/`), 감시 상태(`status.json`) |
+| `cacheDir` | `~/.cache/review-owl` | 저장소 캐시와 worktree |
+| `stateDir` | `~/.local/state/review-owl` | 상태, 실행 기록(`runs.jsonl`), 리뷰 결과 파일(`reviews/`), 감시 상태(`status.json`) |
 
 ## 7. 사용법
 
 ```bash
-pr-ai-reviewer run --plan                 # 리뷰하지 않고 판정 결과만 확인
-pr-ai-reviewer run                        # 감시 시작 (기본 dry-run)
-pr-ai-reviewer run --post                 # 감시하며 PR에 게시
-pr-ai-reviewer review owner/repo 123      # PR 하나를 지금 리뷰 (기본 dry-run)
-pr-ai-reviewer review owner/repo 123 --engine codex
-pr-ai-reviewer review owner/repo 123 --sha <40자리 커밋>   # 과거 커밋 기준 리뷰 (평가용)
-pr-ai-reviewer status                     # 대기·리뷰 기록
-pr-ai-reviewer doctor                     # node, gh 로그인, git, claude, codex, 설정, 자동 실행 점검
-pr-ai-reviewer ctl pause                  # 실행 중인 감시 일시정지 (resume: 재개, poll-now: 바로 조회)
+review-owl run --plan                 # 리뷰하지 않고 판정 결과만 확인
+review-owl run                        # 감시 시작 (기본 dry-run)
+review-owl run --post                 # 감시하며 PR에 게시
+review-owl review owner/repo 123      # PR 하나를 지금 리뷰 (기본 dry-run)
+review-owl review owner/repo 123 --engine codex
+review-owl review owner/repo 123 --sha <40자리 커밋>   # 과거 커밋 기준 리뷰 (평가용)
+review-owl status                     # 대기·리뷰 기록
+review-owl doctor                     # node, gh 로그인, git, claude, codex, 설정, 자동 실행 점검
+review-owl ctl pause                  # 실행 중인 감시 일시정지 (resume: 재개, poll-now: 바로 조회)
 ```
 
 로그는 stderr, 리뷰 본문은 stdout으로 나갑니다. dry-run 결과도 `stateDir/reviews/`에 파일로 남습니다.
@@ -238,17 +262,18 @@ pr-ai-reviewer ctl pause                  # 실행 중인 감시 일시정지 (r
 ## 8. 로그인 시 자동 실행 (macOS)
 
 ```bash
-pr-ai-reviewer service install --post   # 게시 모드로 등록 (--dry-run이면 게시하지 않음)
-pr-ai-reviewer service status           # 상태와 최근 로그
-pr-ai-reviewer service restart          # 등록된 자동 실행을 다시 시작 (업데이트 후)
-pr-ai-reviewer service uninstall        # 해제
+review-owl service install --post   # 게시 모드로 등록 (--dry-run이면 게시하지 않음)
+review-owl service status           # 상태와 최근 로그
+review-owl service restart          # 등록된 자동 실행을 다시 시작 (도구를 새로 설치한 뒤)
+review-owl service uninstall        # 해제
 ```
 
 - `service install`에 준 `--post`·`--dry-run`·`--engine`·`--model`은 설정 파일에 저장됩니다. 자동 실행은 설정 파일만 보고 동작하므로, 이후 설정을 바꾸면 다시 등록하지 않아도 다음 조회부터 적용됩니다.
-- 사용자 계정의 `~/Library/LaunchAgents/io.github.juhee200.pr-ai-reviewer.agent.plist`로 등록되어 관리자 권한이 필요 없습니다. v0.2.0까지 쓰던 `com.github.juhee200.pr-ai-reviewer`는 등록·해제할 때 함께 정리합니다.
+- 사용자 계정의 `~/Library/LaunchAgents/io.github.juhee200.review-owl.agent.plist`로 등록되어 관리자 권한이 필요 없습니다. 예전 이름으로 등록된 자동 실행(v0.5.0까지 `io.github.juhee200.pr-ai-reviewer.agent`, v0.2.0까지 `com.github.juhee200.pr-ai-reviewer`)은 등록·해제할 때 함께 정리합니다.
 - launchd는 셸의 PATH를 물려받지 않습니다. 그래서 등록할 때 node, gh, git, claude, codex의 경로를 찾아 plist에 넣습니다. 도구를 새로 설치하거나 옮겼다면 다시 등록하세요.
-- 로그는 `~/Library/Logs/pr-ai-reviewer/agent.log`에 남습니다.
+- 로그는 `~/Library/Logs/review-owl/agent.log`에 남습니다.
 - 비정상 종료하면 다시 시작하고, 로그아웃이나 해제로 정상 종료하면 다시 시작하지 않습니다.
+- 앱이나 CLI를 새 버전으로 바꾸면, 감시 프로세스가 다음 조회 때 설치된 버전이 바뀐 것을 보고 종료 코드 75로 끝납니다. launchd가 이를 비정상 종료로 보고 새 버전으로 다시 시작합니다. Homebrew는 cask 설치 후 명령을 샌드박스에서 실행해 launchd 작업을 직접 다시 시작할 수 없어 이 방식을 씁니다.
 - 실행 명령 앞에 `/bin/sh` 검사를 붙여, CLI 파일이 없으면(앱이나 npm 패키지를 지운 경우) 오류 대신 정상 종료합니다. 그래서 launchd가 실패한 실행을 반복하지 않습니다. 실행 중에 CLI 파일이 2분 넘게 없으면 감시 프로세스가 자동 실행 등록을 지우고 끝납니다.
 - 처음 켜면 이미 열려 있는 내 PR 중 아직 리뷰하지 않은 커밋도 찾아 리뷰합니다. dry-run으로만 리뷰한 커밋은 게시 모드에서 다시 리뷰해 게시합니다.
 

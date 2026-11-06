@@ -1,11 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// 화면 확인과 README 스크린샷용. PR_AI_REVIEWER_SNAPSHOT_DIR가 있을 때만 설정 창과 메뉴 화면을 PNG로 저장한다.
+/// 화면 확인과 README 스크린샷용. REVIEW_OWL_SNAPSHOT_DIR가 있을 때만 설정 창과 메뉴 화면을 PNG로 저장한다.
 /// 앱이 자기 창을 그리는 방식이라 화면 기록 권한이 필요 없다.
 @MainActor
 enum Snapshot {
-    static let directory = ProcessInfo.processInfo.environment["PR_AI_REVIEWER_SNAPSHOT_DIR"]
+    static let directory = ProcessInfo.processInfo.environment["REVIEW_OWL_SNAPSHOT_DIR"]
         .map { URL(fileURLWithPath: $0, isDirectory: true) }
 
     static func captureAll(model: AppModel) async {

@@ -1,12 +1,12 @@
 {
-  "name": "pr-ai-reviewer",
-  "version": "0.5.0",
-  "description": "내가 올린 PR을 감지해 이 PC의 Claude Code 또는 Codex CLI로 리뷰하는 로컬 상주 도구",
+  "name": "review-owl",
+  "version": "0.6.0",
+  "description": "리뷰엉이: 내가 올린 PR을 감지해 이 PC의 Claude Code 또는 Codex CLI로 리뷰하는 로컬 상주 도구",
   "private": true,
   "license": "MIT",
   "type": "module",
   "bin": {
-    "pr-ai-reviewer": "dist/cli.js"
+    "review-owl": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -17,11 +17,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/juhee200/pr-ai-reviewer.git"
+    "url": "git+https://github.com/juhee200/review-owl.git"
   },
-  "homepage": "https://github.com/juhee200/pr-ai-reviewer#readme",
+  "homepage": "https://github.com/juhee200/review-owl#readme",
   "bugs": {
-    "url": "https://github.com/juhee200/pr-ai-reviewer/issues"
+    "url": "https://github.com/juhee200/review-owl/issues"
   },
   "keywords": [
     "code-review",

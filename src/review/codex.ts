@@ -26,7 +26,7 @@ export function buildCodexArgs(settings: EngineSettings, schemaPath: string, out
 
 export async function reviewWithCodex(workspace: Workspace, prompt: string, settings: EngineSettings): Promise<EngineOutput> {
   // 스키마와 결과 파일은 worktree 밖 임시 디렉터리에 둔다.
-  const tempDir = await mkdtemp(join(tmpdir(), 'pr-ai-reviewer-codex-'));
+  const tempDir = await mkdtemp(join(tmpdir(), 'review-owl-codex-'));
   try {
     const schemaPath = join(tempDir, 'schema.json');
     const outputPath = join(tempDir, 'result.json');

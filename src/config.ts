@@ -29,9 +29,14 @@ export interface Config {
   claudeSettingSources: string;
 }
 
-const XDG_CONFIG = process.env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config');
-const XDG_CACHE = process.env['XDG_CACHE_HOME'] ?? join(homedir(), '.cache');
-const XDG_STATE = process.env['XDG_STATE_HOME'] ?? join(homedir(), '.local', 'state');
+/** 폴더·명령 이름. 화면 이름은 리뷰엉이다. */
+export const APP_SLUG = 'review-owl';
+/** v0.5.0까지 쓰던 이름. 옛 폴더를 옮기고 옛 자동 실행을 정리할 때 쓴다. */
+export const LEGACY_SLUG = 'pr-ai-reviewer';
+
+export const XDG_CONFIG = process.env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config');
+export const XDG_CACHE = process.env['XDG_CACHE_HOME'] ?? join(homedir(), '.cache');
+export const XDG_STATE = process.env['XDG_STATE_HOME'] ?? join(homedir(), '.local', 'state');
 
 export const DEFAULT_CONFIG: Config = {
   repos: [],
@@ -45,15 +50,18 @@ export const DEFAULT_CONFIG: Config = {
   maxDiffLines: 3000,
   dryRun: true,
   maxFailures: 3,
-  cacheDir: join(XDG_CACHE, 'pr-ai-reviewer'),
-  stateDir: join(XDG_STATE, 'pr-ai-reviewer'),
+  cacheDir: join(XDG_CACHE, APP_SLUG),
+  stateDir: join(XDG_STATE, APP_SLUG),
   claudeSettingSources: 'project',
 };
 
-/** PR_AI_REVIEWER_CONFIG가 있으면 그 경로를 쓴다. 메뉴바 앱도 이 값을 CLI에 그대로 넘긴다. */
+/**
+ * REVIEW_OWL_CONFIG가 있으면 그 경로를 쓴다. 메뉴바 앱도 이 값을 CLI에 그대로 넘긴다.
+ * v0.5.0까지의 PR_AI_REVIEWER_CONFIG도 읽는다.
+ */
 export function defaultConfigPath(): string {
-  const override = process.env['PR_AI_REVIEWER_CONFIG'];
-  return override ? expandHome(override) : join(XDG_CONFIG, 'pr-ai-reviewer', 'config.json');
+  const override = process.env['REVIEW_OWL_CONFIG'] || process.env['PR_AI_REVIEWER_CONFIG'];
+  return override ? expandHome(override) : join(XDG_CONFIG, APP_SLUG, 'config.json');
 }
 
 // GitHub 소유자·저장소 이름에 쓰이는 문자만 허용한다. 이 값은 캐시 경로와 gh 인자에 쓰인다.
@@ -161,7 +169,7 @@ export async function loadConfig(path: string): Promise<Config> {
     text = await readFile(path, 'utf8');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(`설정 파일이 없습니다: ${path}\n먼저 \`pr-ai-reviewer init\`을 실행하세요.`);
+      throw new Error(`설정 파일이 없습니다: ${path}\n먼저 \`review-owl init\`을 실행하세요.`);
     }
     throw error;
   }

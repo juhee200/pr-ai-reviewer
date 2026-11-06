@@ -41,9 +41,9 @@ export interface Control {
   paused: boolean;
 }
 
-/** ps 명령줄이 pr-ai-reviewer 감시 프로세스(run)인지 판단한다. */
+/** ps 명령줄이 리뷰엉이 감시 프로세스(run)인지 판단한다. v0.5.0까지의 pr-ai-reviewer 경로도 인정한다. */
 export function looksLikeDaemon(commandLine: string): boolean {
-  return /pr-ai-reviewer|cli\.(?:js|ts)/.test(commandLine) && /\brun\b/.test(commandLine);
+  return /review-owl|pr-ai-reviewer|cli\.(?:js|ts)/.test(commandLine) && /\brun\b/.test(commandLine);
 }
 
 export function statusPath(stateDir: string): string {

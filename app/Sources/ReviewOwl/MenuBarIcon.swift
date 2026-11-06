@@ -47,10 +47,10 @@ enum MenuBarIcon {
 
     private static func description(for state: AppModel.MenuBarState) -> String {
         switch state {
-        case .watching: "PR AI Reviewer: 감시 중"
-        case .reviewing: "PR AI Reviewer: 리뷰 중"
-        case .paused: "PR AI Reviewer: 일시정지됨"
-        case .attention: "PR AI Reviewer: 확인 필요"
+        case .watching: "리뷰엉이: 감시 중"
+        case .reviewing: "리뷰엉이: 리뷰 중"
+        case .paused: "리뷰엉이: 일시정지됨"
+        case .attention: "리뷰엉이: 확인 필요"
         }
     }
 }

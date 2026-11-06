@@ -85,7 +85,7 @@ describe('readCodeQuote', () => {
   });
 
   async function withRepo(run: (root: string, outside: string) => Promise<void>): Promise<void> {
-    const base = await mkdtemp(join(tmpdir(), 'pr-ai-reviewer-quote-'));
+    const base = await mkdtemp(join(tmpdir(), 'review-owl-quote-'));
     try {
       const root = join(base, 'repo');
       const outside = join(base, 'secret.txt');

@@ -13,25 +13,26 @@ import { markFailed, markReviewed, schedule } from './scheduler.js';
 import { runDoctor } from './doctor.js';
 import { listAccessibleRepos } from './repos.js';
 import { looksLikeDaemon, readControl, readStatus, StatusReporter, writeControl } from './status.js';
-import { packageVersion } from './version.js';
+import { migrateFromLegacyName } from './migrate.js';
+import { packageVersion, readPackageVersion, versionChanged } from './version.js';
 import { installService, logPath, plistPath, removePlistIfScript, restartService, serviceStatus, uninstallService, } from './service.js';
 import { loadState, saveState } from './state.js';
-const HELP = `pr-ai-reviewer: 내가 올린 PR을 이 PC의 Claude Code 또는 Codex로 리뷰합니다.
+const HELP = `review-owl (리뷰엉이): 내가 올린 PR을 이 PC의 Claude Code 또는 Codex로 리뷰합니다.
 
 사용법
-  pr-ai-reviewer init                         설정 파일을 만듭니다
-  pr-ai-reviewer review <owner/repo> <번호>   PR 하나를 지금 리뷰합니다
-  pr-ai-reviewer run                          내 열린 PR을 감시하며 새 커밋마다 리뷰합니다
-  pr-ai-reviewer status                       대기 중인 PR과 리뷰 기록을 보여줍니다
-  pr-ai-reviewer service install [--post]     로그인 시 자동 실행으로 등록합니다 (macOS, 옵션은 설정에 저장)
-  pr-ai-reviewer service uninstall            자동 실행 등록을 해제합니다
-  pr-ai-reviewer service restart              등록된 자동 실행을 다시 시작합니다
-  pr-ai-reviewer service status [--json]      자동 실행 상태와 최근 로그를 보여줍니다
-  pr-ai-reviewer doctor [--json]              설치·로그인·설정 상태를 점검합니다
-  pr-ai-reviewer repos [--json]               선택할 수 있는 저장소 목록을 보여줍니다
-  pr-ai-reviewer config show [--json]         설정을 보여줍니다
-  pr-ai-reviewer config set                   표준 입력의 JSON으로 설정을 바꿉니다
-  pr-ai-reviewer ctl <pause|resume|poll-now>  실행 중인 감시를 일시정지·재개하거나 바로 조회합니다
+  review-owl init                         설정 파일을 만듭니다
+  review-owl review <owner/repo> <번호>   PR 하나를 지금 리뷰합니다
+  review-owl run                          내 열린 PR을 감시하며 새 커밋마다 리뷰합니다
+  review-owl status                       대기 중인 PR과 리뷰 기록을 보여줍니다
+  review-owl service install [--post]     로그인 시 자동 실행으로 등록합니다 (macOS, 옵션은 설정에 저장)
+  review-owl service uninstall            자동 실행 등록을 해제합니다
+  review-owl service restart              등록된 자동 실행을 다시 시작합니다
+  review-owl service status [--json]      자동 실행 상태와 최근 로그를 보여줍니다
+  review-owl doctor [--json]              설치·로그인·설정 상태를 점검합니다
+  review-owl repos [--json]               선택할 수 있는 저장소 목록을 보여줍니다
+  review-owl config show [--json]         설정을 보여줍니다
+  review-owl config set                   표준 입력의 JSON으로 설정을 바꿉니다
+  review-owl ctl <pause|resume|poll-now>  실행 중인 감시를 일시정지·재개하거나 바로 조회합니다
 
 옵션
   --config <경로>         설정 파일 (기본: ${defaultConfigPath()})
@@ -49,6 +50,8 @@ const HELP = `pr-ai-reviewer: 내가 올린 PR을 이 PC의 Claude Code 또는 C
 const ACTION_LABEL = { review: '리뷰 예정', wait: '대기', skip: '건너뜀' };
 // 업그레이드 중에는 CLI 파일이 몇 초 동안 없을 수 있어, 이 시간보다 오래 없을 때만 삭제된 것으로 본다.
 const SCRIPT_MISSING_GRACE_MS = 120_000;
+// 새 버전이 설치돼 다시 시작하려고 끝낼 때의 종료 코드(EX_TEMPFAIL). 0이 아니어야 launchd KeepAlive가 다시 시작한다.
+const UPDATED_EXIT_CODE = 75;
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 function log(message) {
     const time = new Date().toTimeString().slice(0, 8);
@@ -139,7 +142,7 @@ async function commandInit(configPath) {
 async function commandReview(config, values, args) {
     const [repoArg, numberArg] = args;
     if (repoArg === undefined || numberArg === undefined)
-        throw new Error('사용법: pr-ai-reviewer review <owner/repo> <번호>');
+        throw new Error('사용법: review-owl review <owner/repo> <번호>');
     const repo = validateRepo(repoArg);
     const number = validatePrNumber(numberArg);
     if (values.sha !== undefined && !SHA_PATTERN.test(values.sha))
@@ -280,6 +283,19 @@ async function commandRun(initialConfig, values, configPath) {
             return null;
         }
     })();
+    // Homebrew는 cask 설치 후 명령을 샌드박스에서 실행해 launchd 작업을 다시 시작할 수 없다.
+    // 그래서 감시 프로세스가 조회마다 설치된 버전을 확인하고, 바뀌었으면 0이 아닌 코드로 끝내 launchd가 새 코드로 다시 시작하게 한다.
+    // 파일을 교체하는 중(버전을 못 읽거나 CLI 파일이 없음)에는 끝내지 않는다. 셸 검사가 CLI 파일이 없으면 정상 종료해 재시작이 멈추기 때문이다.
+    const startedVersion = packageVersion();
+    const codeUpdated = () => {
+        if (values.once || values.plan || scriptPath === null || !existsSync(scriptPath))
+            return false;
+        const installed = readPackageVersion();
+        if (!versionChanged(startedVersion, installed))
+            return false;
+        log(`새 버전 ${installed}이(가) 설치돼 종료합니다. 자동 실행이면 launchd가 새 버전으로 다시 시작합니다.`);
+        return true;
+    };
     let scriptMissingSince = null;
     const scriptRemoved = async () => {
         if (scriptPath === null || existsSync(scriptPath)) {
@@ -316,6 +332,10 @@ async function commandRun(initialConfig, values, configPath) {
         while (!controller.signal.aborted) {
             if (await scriptRemoved())
                 break;
+            if (codeUpdated()) {
+                process.exitCode = UPDATED_EXIT_CODE;
+                break;
+            }
             const configError = await reloadConfig();
             await reporter?.update({
                 mode: resolveDryRun(values, config) ? 'dry-run' : 'post',
@@ -397,7 +417,7 @@ async function commandConfig(values, args, configPath) {
         return;
     }
     if (action === 'set') {
-        // 변경값은 표준 입력의 JSON으로 받는다. 예: echo '{"engine":"codex"}' | pr-ai-reviewer config set
+        // 변경값은 표준 입력의 JSON으로 받는다. 예: echo '{"engine":"codex"}' | review-owl config set
         let patch;
         try {
             patch = JSON.parse(await readStdin());
@@ -410,7 +430,7 @@ async function commandConfig(values, args, configPath) {
         log(`설정을 저장했습니다: ${resolve(configPath)}`);
         return;
     }
-    throw new Error('사용법: pr-ai-reviewer config <show|set>');
+    throw new Error('사용법: review-owl config <show|set>');
 }
 async function commandCtl(args, configPath) {
     const [action] = args;
@@ -419,7 +439,7 @@ async function commandCtl(args, configPath) {
     if (action === 'pause' || action === 'resume')
         await writeControl(stateDir, { paused: action === 'pause' });
     else if (action !== 'poll-now')
-        throw new Error('사용법: pr-ai-reviewer ctl <pause|resume|poll-now>');
+        throw new Error('사용법: review-owl ctl <pause|resume|poll-now>');
     const pid = Number((await readFile(join(stateDir, 'run.lock'), 'utf8').catch(() => '')).trim());
     // v0.2.0 이하 감시 프로세스는 SIGUSR2 처리기가 없어 신호를 받으면 종료된다.
     // 상태 파일을 쓰는 버전(처리기가 있는 버전)이 같은 PID로 실행 중일 때만 신호를 보낸다.
@@ -474,7 +494,7 @@ async function commandService(values, args, configPath) {
         console.log(`최근 로그\n${status.logTail}`);
         return;
     }
-    throw new Error('사용법: pr-ai-reviewer service <install|uninstall|restart|status>');
+    throw new Error('사용법: review-owl service <install|uninstall|restart|status>');
 }
 async function main() {
     const { values, positionals } = parseArgs({
@@ -504,6 +524,7 @@ async function main() {
         console.log(HELP);
         return;
     }
+    await migrateFromLegacyName(log);
     const configPath = values.config ?? defaultConfigPath();
     if (command === 'init')
         return commandInit(configPath);

@@ -88,7 +88,7 @@ function renderBody(input, items, inlineCount) {
         if (finding.suggestion.trim() !== '')
             lines.push('', `제안: ${sanitize(finding.suggestion)}`);
     }
-    lines.push('', '---', '<sub>pr-ai-reviewer가 PR 작성자의 PC에서 실행한 결과입니다. P1 이상은 지적마다 반영 여부와 이유를 답글로 남겨 주세요.</sub>', '');
+    lines.push('', '---', '<sub>리뷰엉이(review-owl)가 PR 작성자의 PC에서 실행한 결과입니다. P1 이상은 지적마다 반영 여부와 이유를 답글로 남겨 주세요.</sub>', '');
     return lines.join('\n');
 }
 function renderCommentBody(finding, engine) {

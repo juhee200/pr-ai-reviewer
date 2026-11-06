@@ -18,7 +18,7 @@ enum CLIError: LocalizedError {
     }
 }
 
-/// 앱 번들에 넣은 pr-ai-reviewer CLI를 시스템 node로 실행한다.
+/// 앱 번들에 넣은 review-owl CLI를 시스템 node로 실행한다.
 /// 앱은 화면과 제어만 맡고, 설정 검증·저장·자동 실행 등록·리뷰는 CLI가 한다.
 struct CLI: Sendable {
     let nodeURL: URL
@@ -35,8 +35,8 @@ struct CLI: Sendable {
     }
 
     private static func bundledScript() throws -> URL {
-        // 개발 중에는 PR_AI_REVIEWER_CLI로 저장소의 dist/cli.js를 가리킬 수 있다.
-        if let override = ProcessInfo.processInfo.environment["PR_AI_REVIEWER_CLI"], !override.isEmpty {
+        // 개발 중에는 REVIEW_OWL_CLI로 저장소의 dist/cli.js를 가리킬 수 있다.
+        if let override = ProcessInfo.processInfo.environment["REVIEW_OWL_CLI"], !override.isEmpty {
             return URL(fileURLWithPath: override)
         }
         guard let resources = Bundle.main.resourceURL else { throw CLIError.scriptNotFound("Contents/Resources") }
@@ -59,7 +59,7 @@ struct CLI: Sendable {
 
     private static func loginShellPath() async -> [String] {
         guard let shell = userShell() else { return [] }
-        let marker = "__PR_AI_REVIEWER_PATH__"
+        let marker = "__REVIEW_OWL_PATH__"
         // -i로 .zshrc까지 읽어 nvm 등이 더한 경로도 얻는다. 셸 설정의 다른 출력과 섞이지 않게 표식 사이 값만 쓴다.
         let command = "printf '\(marker)%s\(marker)' \"$PATH\""
         guard let output = try? await runProcess(URL(fileURLWithPath: shell), ["-l", "-i", "-c", command], timeout: .seconds(5)),

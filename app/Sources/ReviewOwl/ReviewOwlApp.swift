@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct PRAIReviewerApp: App {
+struct ReviewOwlApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let model = AppModel.shared
 

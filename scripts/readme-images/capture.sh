@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # README 이미지(docs/images/*.png)를 샘플 데이터로 다시 만든다.
-# - menu.png, settings.png, menubar-icons.png: 메뉴바 앱의 스냅샷 모드(PR_AI_REVIEWER_SNAPSHOT_DIR)에 가짜 CLI를 연결해 그린다.
+# - menu.png, settings.png, menubar-icons.png: 메뉴바 앱의 스냅샷 모드(REVIEW_OWL_SNAPSHOT_DIR)에 가짜 CLI를 연결해 그린다.
 # - pr-review.png: src/render.ts로 만든 샘플 리뷰를 GitHub 마크다운 API로 HTML로 바꾼 뒤 Chrome으로 찍는다.
 # 실제 계정·저장소·경로는 쓰지 않는다. 설치된 앱과 겹치지 않게 번들 ID를 바꾼 임시 앱으로 실행한다.
 set -euo pipefail
@@ -24,11 +24,11 @@ VERSION="$(node -p 'require(process.argv[1]).version' "$ROOT/package.json")"
 # 1. 메뉴바 앱 화면
 swift build --package-path "$ROOT/app" -c release
 BIN_DIR="$(swift build --package-path "$ROOT/app" -c release --show-bin-path)"
-APP="$WORK/PR AI Reviewer Snapshot.app"
+APP="$WORK/Review Owl Snapshot.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/PRAIReviewer" "$APP/Contents/MacOS/PRAIReviewer"
+cp "$BIN_DIR/ReviewOwl" "$APP/Contents/MacOS/ReviewOwl"
 cp "$ROOT/app/Resources/MenuBarOwl.png" "$ROOT/app/Resources/MenuBarOwl@2x.png" "$APP/Contents/Resources/"
-sed -e "s/__VERSION__/$VERSION/g" -e "s/io.github.juhee200.pr-ai-reviewer/io.github.juhee200.pr-ai-reviewer.snapshot/" \
+sed -e "s/__VERSION__/$VERSION/g" -e "s/io.github.juhee200.review-owl/io.github.juhee200.review-owl.snapshot/" \
   "$ROOT/app/Info.plist" > "$APP/Contents/Info.plist"
 
 # 감시 프로세스 자리에 살아 있는 프로세스가 있어야 앱이 "실행 중"으로 그린다.
@@ -39,11 +39,11 @@ node "$HERE/sample-state.mjs" "$STATE" "$SLEEP_PID"
 
 SHOTS="$WORK/shots"
 mkdir -p "$SHOTS"
-PR_AI_REVIEWER_CLI="$HERE/fake-cli.mjs" \
-PR_AI_REVIEWER_SNAPSHOT_DIR="$SHOTS" \
+REVIEW_OWL_CLI="$HERE/fake-cli.mjs" \
+REVIEW_OWL_SNAPSHOT_DIR="$SHOTS" \
 SAMPLE_STATE_DIR="$STATE" \
 SAMPLE_DAEMON_PID="$SLEEP_PID" \
-  "$APP/Contents/MacOS/PRAIReviewer" -NSRequiresAquaSystemAppearance YES &
+  "$APP/Contents/MacOS/ReviewOwl" -NSRequiresAquaSystemAppearance YES &
 APP_PID=$!
 for _ in $(seq 1 120); do
   [[ -f "$SHOTS/menubar-icons.png" ]] && break
