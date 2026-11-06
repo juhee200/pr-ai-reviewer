@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { mkdir, rename } from 'node:fs/promises';
+import { mkdir, readFile, rename } from 'node:fs/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { dirname, join } from 'node:path';
 import { APP_SLUG, LEGACY_SLUG, XDG_CACHE, XDG_CONFIG, XDG_STATE } from './config.ts';
 import { logDir, removeLegacyAgents } from './service.ts';
@@ -38,6 +39,35 @@ export async function moveDirectories(moves: readonly DirectoryMove[], log: (mes
   }
 }
 
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+/**
+ * 프로세스가 끝날 때까지 기다린다. launchctl bootout은 SIGTERM을 보내고 바로 돌아오는데,
+ * 옛 감시 프로세스는 끝나기 전에 상태 파일을 한 번 더 쓴다. 폴더를 먼저 옮기면 그 쓰기가 옛 폴더를 다시 만든다.
+ */
+export async function waitForExit(pid: number | null, timeoutMs: number): Promise<boolean> {
+  if (pid === null) return true;
+  const deadline = Date.now() + timeoutMs;
+  while (isAlive(pid)) {
+    if (Date.now() >= deadline) return false;
+    await sleep(200);
+  }
+  return true;
+}
+
+async function legacyDaemonPid(): Promise<number | null> {
+  const text = await readFile(join(XDG_STATE, LEGACY_SLUG, 'run.lock'), 'utf8').catch(() => '');
+  const pid = Number(text.trim());
+  return Number.isInteger(pid) && pid > 0 ? pid : null;
+}
+
 /**
  * pr-ai-reviewer에서 리뷰엉이(review-owl)로 이름을 바꾼 뒤 처음 실행할 때 한 번 옮긴다.
  * 옛 감시 프로세스가 옛 폴더에 계속 쓰지 않게, 옮기기 전에 옛 자동 실행을 먼저 내린다.
@@ -46,6 +76,14 @@ export async function moveDirectories(moves: readonly DirectoryMove[], log: (mes
 export async function migrateFromLegacyName(log: (message: string) => void): Promise<void> {
   const moves = pendingMoves(legacyDirectoryMoves());
   if (moves.length === 0) return;
-  if (process.platform === 'darwin') await removeLegacyAgents();
+  if (process.platform === 'darwin') {
+    const pid = await legacyDaemonPid();
+    await removeLegacyAgents();
+    // 감시 프로세스는 SIGTERM을 받으면 진행 중인 AI·git 프로세스를 멈추고 worktree를 정리한 뒤 끝난다.
+    if (!(await waitForExit(pid, 30_000))) {
+      log(`이전 감시 프로세스(PID ${pid})가 아직 끝나지 않아 폴더를 옮기지 않았습니다. 다시 실행하면 옮깁니다.`);
+      return;
+    }
+  }
   await moveDirectories(moves, log);
 }

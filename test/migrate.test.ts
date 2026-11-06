@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { moveDirectories, pendingMoves } from '../src/migrate.ts';
+import { spawn } from 'node:child_process';
+import { moveDirectories, pendingMoves, waitForExit } from '../src/migrate.ts';
 import { versionChanged } from '../src/version.ts';
 
 describe('옛 이름 폴더 옮기기', () => {
@@ -34,6 +35,20 @@ describe('옛 이름 폴더 옮기기', () => {
       assert.deepEqual(pendingMoves(moves), []);
     } finally {
       await rm(base, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('waitForExit', () => {
+  it('프로세스가 끝나면 true, 제한 시간 안에 안 끝나면 false', async () => {
+    assert.equal(await waitForExit(null, 0), true);
+    const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 10_000)']);
+    try {
+      assert.equal(await waitForExit(child.pid ?? null, 300), false);
+      child.kill('SIGTERM');
+      assert.equal(await waitForExit(child.pid ?? null, 5_000), true);
+    } finally {
+      child.kill('SIGKILL');
     }
   });
 });
